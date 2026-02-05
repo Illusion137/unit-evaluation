@@ -212,7 +212,7 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
         case '+': return advance_with_token(TokenType::PLUS);
         case '-': return advance_with_token(TokenType::MINUS);
         case '*': return advance_with_token(TokenType::TIMES);
-        case '/': return advance_with_token(TokenType::FRACTION);
+        case '/': return advance_with_token(TokenType::DIVIDE);
         case '^': return advance_with_token(TokenType::EXPONENT);
         case '!': return advance_with_token(TokenType::FACTORIAL);
         case '(': return advance_with_token(TokenType::LEFT_PAREN);

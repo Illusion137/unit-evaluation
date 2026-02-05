@@ -35,6 +35,7 @@ dv::EValue dv::eval(const std::unique_ptr<AST> &ast) {
             const dv::EValue rhs = eval(ast->rhs);
             return lhs ^ rhs;
         }
+        case TokenType::DIVIDE:
         case TokenType::FACTORIAL: {
             const dv::EValue lhs = eval(ast->lhs);
             return lhs.fact();

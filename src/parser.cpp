@@ -14,6 +14,7 @@ std::pair<std::int32_t, std::int32_t> dv::Parser::precedence(dv::TokenType type)
         case dv::TokenType::MINUS:
             return { 11, 10 };
         case dv::TokenType::TIMES:
+        case dv::TokenType::DIVIDE:
         case dv::TokenType::FRACTION:
             return { 21, 20 };
         default: return {-1, -1};

@@ -15,6 +15,7 @@ namespace dv {
         PLUS,
         MINUS,
         TIMES,
+        DIVIDE,
         FRACTION,
         EXPONENT,
         FACTORIAL,

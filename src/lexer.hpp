@@ -1,0 +1,31 @@
+#pragma once
+
+#include "token.hpp"
+#include <vector>
+
+namespace dv {
+    class Lexer {
+    public:
+        Lexer(const std::string_view view) noexcept;
+        std::vector<Token> extract_all_tokens() noexcept;
+    private:
+        std::uint32_t length;
+        const char *begin;
+        const char *it;
+    
+        std::uint32_t remaining_length() const noexcept;
+        char peek() const noexcept;
+        char peek_next() const noexcept;
+        void advance() noexcept;
+        void advance(const std::uint32_t count) noexcept;
+        Token advance_with_token(const TokenType token_type) noexcept;
+        Token advance_with_token(const TokenType token_type, const std::uint32_t count) noexcept;
+        Token advance_with_token(const double token_value, const std::uint32_t count) noexcept;
+        void devoure_whitespace() noexcept;
+        std::int32_t collect_subscript(char *buffer, std::size_t size, std::uint8_t &write) noexcept;
+        Token consume_next_token() noexcept;
+        Token get_numeric_literal_token() noexcept;
+        Token get_indentifier_token() noexcept;
+        Token get_special_indentifier_token() noexcept;
+    };
+}

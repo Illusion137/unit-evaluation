@@ -38,31 +38,31 @@ dv::UnitVector dv::UnitVector::operator^(const UnitVector &rhs) const noexcept {
 }
 
 dv::EValue dv::EValue::operator+() const noexcept {
-    return { .value = this->value, .unit = this->unit };
+    return { this->value, this->unit };
 }
 dv::EValue dv::EValue::operator+(const EValue &rhs) const noexcept {
-    return { .value = this->value + rhs.value, .unit = this->unit + rhs.unit };
+    return { this->value + rhs.value, this->unit + rhs.unit };
 }
 dv::EValue dv::EValue::operator-() const noexcept {
-    return { .value = -this->value, .unit = this->unit };
+    return { -this->value, this->unit };
 }
 dv::EValue dv::EValue::operator-(const EValue &rhs) const noexcept {
-    return { .value = this->value - rhs.value, .unit = this->unit - rhs.unit };
+    return { this->value - rhs.value, this->unit - rhs.unit };
 }
 dv::EValue dv::EValue::operator*(const EValue &rhs) const noexcept {
-    return { .value = this->value * rhs.value, .unit = this->unit * rhs.unit };
+    return { this->value * rhs.value, this->unit * rhs.unit };
 }
 dv::EValue dv::EValue::operator/(const EValue &rhs) const noexcept {
-    return { .value = this->value / rhs.value, .unit = this->unit / rhs.unit };
+    return { this->value / rhs.value, this->unit / rhs.unit };
 }
 dv::EValue dv::EValue::operator^(const EValue &rhs) const noexcept {
-    return { .value = std::pow(this->value, rhs.value), .unit = this->unit ^ rhs.unit };
+    return { std::pow(this->value, rhs.value), this->unit ^ rhs.unit };
 }
 dv::EValue dv::EValue::fact() const noexcept {
     uint64_t fact = 1;
     for(uint32_t i = 2; i <= (uint64_t)this->value; i++) fact *= i;
-    return { .value = (double)fact, .unit = { 0 } };
+    return { (double)fact, { 0 } };
 }
 dv::EValue dv::EValue::abs() const noexcept {
-    return { .value = std::fabs(this->value), .unit = this->unit };
+    return { std::fabs(this->value), this->unit };
 }

@@ -48,6 +48,7 @@ std::vector<dv::Token> dv::Lexer::extract_all_tokens() noexcept{
         // std::println("[{}]: \"{}\" = {}", (int)token.type, token.text, token.value);
         tokens.emplace_back(std::move(token));
     }
+    tokens.emplace_back(TokenType::TEOF, "");
     return tokens;
 }
 
@@ -207,6 +208,7 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
     if(!peek()) return {TokenType::TEOF, ""};
     switch (peek()) {
         case '=': return advance_with_token(TokenType::EQUAL);
+        case ',': return advance_with_token(TokenType::COMMA);
         case '+': return advance_with_token(TokenType::PLUS);
         case '-': return advance_with_token(TokenType::MINUS);
         case '*': return advance_with_token(TokenType::TIMES);

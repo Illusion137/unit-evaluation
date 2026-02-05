@@ -1,4 +1,7 @@
+#pragma once
+
 #include <string_view>
+#include <format>
 
 namespace dv {
     enum class TokenType {
@@ -16,6 +19,7 @@ namespace dv {
         EXPONENT,
         FACTORIAL,
         ABSOLUTE_BAR,
+        COMMA,
         LEFT_CURLY_BRACKET,
         RIGHT_CURLY_BRACKET,
         LEFT_BRACKET,
@@ -45,7 +49,6 @@ namespace dv {
         BUILTIN_FUNC_ARCCSC,
         BUILTIN_FUNC_ARCCOT,
     };
-    using TT = TokenType;
     
     struct Token {
         TokenType type;
@@ -57,4 +60,14 @@ namespace dv {
         Token(const TokenType token_type, const double token_value, const std::string_view token_text): type{token_type}, text{token_text}, value{token_value} {}
         operator bool() const noexcept{ return type != TokenType::TEOF; }
     };
-}
+};
+template <>
+struct std::formatter<dv::Token> : std::formatter<std::string> {
+    constexpr auto parse(std::format_parse_context& ctx) {
+        return std::formatter<std::string>::parse(ctx);
+    }
+
+    auto format(const dv::Token& token, std::format_context& ctx) const {
+        return std::format_to(ctx.out(), "[{}]: \"{}\" = {}", static_cast<std::int32_t>(token.type), token.text, token.value);
+    }
+};

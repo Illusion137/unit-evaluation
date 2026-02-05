@@ -1,34 +1,30 @@
 #pragma once
 
 #include "dimeval.hpp"
-#include <unordered_map>
 
-namespace builtins {
-    EValue abs(double value);
-    EValue sqrt(EValue value);
-    EValue nthroot(EValue value);
-    EValue sindeg();
-    EValue sin();
-    EValue asindeg();
-    EValue asin();
-    EValue cosdeg();
-    EValue cos();
-    EValue acosdeg();
-    EValue acos();
-    EValue tandeg();
-    EValue tan();
-    EValue atandeg();
-    EValue atan();
-    EValue ln();
-    EValue log();
-    EValue logb();
-    EValue round();
-    EValue floor();
-    EValue ceil();
-    EValue factorial();
-    EValue nCr();
-    EValue nPr();
-    static const std::unordered_map<std::string, std::uint8_t> BUILTIN_MAP = {
-        
-    };
+namespace dv {
+    namespace builtins {
+        EValue ln(double value);
+        EValue sin(double value);
+        EValue cos(double value);
+        EValue tan(double value);
+        EValue sec(double value);
+        EValue csc(double value);
+        EValue cot(double value);
+        EValue log(double value, std::int32_t base = 10);
+        EValue abs(EValue value);
+        EValue nCr(double n, double r);
+        EValue nPr(double n, double r);
+        EValue nthsqrt(EValue value, double n);
+        EValue ceil(EValue value);
+        EValue factorial(double value);
+        EValue floor(EValue value);
+        EValue round(EValue value, double place);
+        EValue arcsin(double value);
+        EValue arccos(double value);
+        EValue arctan(double value);
+        EValue arcsec(double value);
+        EValue arccsc(double value);
+        EValue arccot(double value);
+    }
 }

@@ -21,6 +21,8 @@ namespace dv {
     struct EValue {
         double value;
         UnitVector unit;
+        EValue(const double val): value{val}, unit{DIMENSIONLESS_VEC} {}
+        EValue(const double val, const UnitVector _unit): value{val}, unit{_unit} {}
         EValue operator+() const noexcept;
         EValue operator+(const EValue &rhs) const noexcept;
         EValue operator-() const noexcept;

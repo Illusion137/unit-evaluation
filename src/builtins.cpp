@@ -2,8 +2,8 @@
 #include <cmath>
 
 dv::EValue dv::builtins::ln(double value){
-    // return std::log(value);
-    return 0.0;
+    if (value <= 0) return std::nan("");
+    return std::log(value);
 }
 dv::EValue dv::builtins::sin(double value){
     return std::sin(value);
@@ -24,23 +24,39 @@ dv::EValue dv::builtins::cot(double value){
     return 1.0 / std::tan(value);
 }
 dv::EValue dv::builtins::log(double value, std::int32_t base){
-    // return std::log10(value);
-    return 0.0;
+    if (value <= 0 || base <= 0 || base == 1) {
+        return std::nan("");
+    }
+    if(base == 10) return std::log10(value);
+    return std::log(value) / std::log(base);
 }
 dv::EValue dv::builtins::abs(dv::EValue value){
     return value.abs();
 }
 dv::EValue dv::builtins::nCr(double n, double r){
-    return 0.0;
+    if (r < 0 || r > n) return 0;
+    if (r > n - r) r = n - r;
+
+    std::int64_t result = 1;
+    for (int i = 1; i <= r; ++i) {
+        result = result * (n - i + 1);
+        result = result / i;
+    }
+    return result;
 }
 dv::EValue dv::builtins::nPr(double n, double r){
-    return 0.0;
+    if (r < 0 || r > n) return 0;
+    std::int64_t result = 1;
+    for (int i = 0; i < r; ++i) {
+        result *= (n - i);
+    }
+    return result;
 }
 dv::EValue dv::builtins::nthsqrt(dv::EValue value, double n){
-    return 0.0;
+    return value ^ (1.0 / n);
 }
 dv::EValue dv::builtins::ceil(dv::EValue value){
-    return 0.0;
+    return {std::ceil(value.value), value.unit};
 }
 dv::EValue dv::builtins::factorial(dv::EValue value){
     return value.fact();

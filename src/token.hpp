@@ -21,6 +21,7 @@ namespace dv {
         EXPONENT,
         FACTORIAL,
         ABSOLUTE_BAR,
+        SUBSCRIPT,
         COMMA,
         LEFT_CURLY_BRACKET,
         RIGHT_CURLY_BRACKET,

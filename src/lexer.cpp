@@ -172,20 +172,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"abs">(): return advance_with_token(TokenType::BUILTIN_FUNC_ABS, 3);
             case strint<"nCr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NCR, 3);
             case strint<"nPr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NPR, 3);
-            case strint<"log">(): {
-                const char *begit = it;
-                advance(3);
-                std::array<char, 32> buffer = { 0 };
-                std::uint8_t write = 0;
-                auto result = collect_subscript(buffer.data(), buffer.size(), write);
-                if(!result || write < 2) return {TokenType::BUILTIN_FUNC_LOG, {begit, it}};
-                if(*(buffer.data() + 1) == '{'){
-                    char *sliced_buffer = buffer.data() + 2;
-                    buffer[write - 1] = 0;
-                    return { TokenType::BUILTIN_FUNC_LOG, atof(sliced_buffer), {begit, it}};
-                }
-                return { TokenType::BUILTIN_FUNC_LOG, (double)(*(buffer.data() + 1) - '0'), {begit, it}};
-            }
+            case strint<"log">(): return advance_with_token(TokenType::BUILTIN_FUNC_LOG, 3);
             default: break;
         }
     }
@@ -207,6 +194,7 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
     devoure_whitespace();
     if(!peek()) return {TokenType::TEOF, ""};
     switch (peek()) {
+        case '_': return advance_with_token(TokenType::SUBSCRIPT);
         case '=': return advance_with_token(TokenType::EQUAL);
         case ',': return advance_with_token(TokenType::COMMA);
         case '+': return advance_with_token(TokenType::PLUS);

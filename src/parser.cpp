@@ -2,8 +2,6 @@
 #include "ast.hpp"
 #include "token.hpp"
 #include <memory>
-#include <print>
-#include <vector>
 
 bool dv::Parser::match(dv::TokenType type) {
     if (peek().type == type) { position++; return true; }

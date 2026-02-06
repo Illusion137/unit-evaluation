@@ -2,6 +2,7 @@
 
 #include <string_view>
 #include <format>
+#include <vector>
 
 namespace dv {
     enum class TokenType {
@@ -73,5 +74,23 @@ struct std::formatter<dv::Token> : std::formatter<std::string> {
             return std::format_to(ctx.out(), "[{}]: \"{}\" = {}", static_cast<std::int32_t>(token.type), token.text, token.value);
         }
         return std::format_to(ctx.out(), "[{}]: \"{}\"", static_cast<std::int32_t>(token.type), token.text);
+    }
+};
+template <>
+struct std::formatter<std::vector<dv::Token>> : std::formatter<std::string> {
+    constexpr auto parse(std::format_parse_context& ctx) {
+        return ctx.begin(); // ignore format spec
+    }
+
+    auto format(const std::vector<dv::Token>& vec,
+                std::format_context& ctx) const {
+        auto out = ctx.out();
+        out = std::format_to(out, "[");
+        for (size_t i = 0; i < vec.size(); ++i) {
+            out = std::format_to(out, "\"{}\"", vec[i].text);
+            if (i + 1 < vec.size()) out = std::format_to(out, ", ");
+        }
+        out = std::format_to(out, "]");
+        return out;
     }
 };

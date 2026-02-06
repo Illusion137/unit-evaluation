@@ -78,8 +78,8 @@ dv::EValue dv::AST::evaluate(const AST *ast) {
         }
         case TokenType::BUILTIN_FUNC_LOG: {
             const dv::EValue lhs = evaluate(ast->lhs);
-            if(ast->value.value == 0) return dv::builtins::log(lhs.value);
-            else return dv::builtins::log(lhs.value, ast->value.value);
+            if(ast->token.value == 0) return dv::builtins::log(lhs.value);
+            else return dv::builtins::log(lhs.value, ast->token.value);
         }
         case TokenType::BUILTIN_FUNC_ABS: {
             const dv::EValue lhs = evaluate(ast->lhs);
@@ -97,8 +97,8 @@ dv::EValue dv::AST::evaluate(const AST *ast) {
         }
         case TokenType::BUILTIN_FUNC_SQRT: {
             const dv::EValue lhs = evaluate(ast->lhs);
-            const dv::EValue rhs = evaluate(ast->rhs);
-            return dv::builtins::nthsqrt(lhs, rhs.value);
+            if(ast->value.value == 0) return dv::builtins::nthsqrt(lhs.value, 2.0);
+            else return dv::builtins::nthsqrt(lhs, ast->value.value);
         }
         case TokenType::BUILTIN_FUNC_CEIL: {
             const dv::EValue lhs = evaluate(ast->lhs);

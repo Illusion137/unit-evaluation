@@ -69,6 +69,9 @@ struct std::formatter<dv::Token> : std::formatter<std::string> {
     }
 
     auto format(const dv::Token& token, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "[{}]: \"{}\" = {}", static_cast<std::int32_t>(token.type), token.text, token.value);
+        if(token.value != 0 || token.type == dv::TokenType::NUMERIC_LITERAL){
+            return std::format_to(ctx.out(), "[{}]: \"{}\" = {}", static_cast<std::int32_t>(token.type), token.text, token.value);
+        }
+        return std::format_to(ctx.out(), "[{}]: \"{}\"", static_cast<std::int32_t>(token.type), token.text);
     }
 };

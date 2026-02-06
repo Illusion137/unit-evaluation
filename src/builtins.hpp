@@ -17,7 +17,7 @@ namespace dv {
         EValue nPr(double n, double r);
         EValue nthsqrt(EValue value, double n);
         EValue ceil(EValue value);
-        EValue factorial(double value);
+        EValue factorial(dv::EValue value);
         EValue floor(EValue value);
         EValue round(EValue value, double place);
         EValue arcsin(double value);

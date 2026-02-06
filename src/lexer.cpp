@@ -45,7 +45,7 @@ std::vector<dv::Token> dv::Lexer::extract_all_tokens() noexcept{
     Token token;
     while((token = consume_next_token()).type != TokenType::TEOF && token.type != TokenType::UNKNOWN){
         // TODO add #IF guards
-        // std::println("[{}]: \"{}\" = {}", (int)token.type, token.text, token.value);
+        // std::println("TT: {}", token);
         tokens.emplace_back(std::move(token));
     }
     tokens.emplace_back(TokenType::TEOF, "");

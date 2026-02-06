@@ -28,7 +28,7 @@ dv::EValue dv::builtins::log(double value, std::int32_t base){
     return 0.0;
 }
 dv::EValue dv::builtins::abs(dv::EValue value){
-    return {std::fabs(value.value), value.unit};
+    return value.abs();
 }
 dv::EValue dv::builtins::nCr(double n, double r){
     return 0.0;
@@ -42,30 +42,31 @@ dv::EValue dv::builtins::nthsqrt(dv::EValue value, double n){
 dv::EValue dv::builtins::ceil(dv::EValue value){
     return 0.0;
 }
-dv::EValue dv::builtins::factorial(double value){
-    return 0.0;
+dv::EValue dv::builtins::factorial(dv::EValue value){
+    return value.fact();
 }
 dv::EValue dv::builtins::floor(dv::EValue value){
-    return 0.0;
+    return {std::floor(value.value), value.unit};
 }
 dv::EValue dv::builtins::round(dv::EValue value, double place){
-    return 0.0;
+    const double multiplier = std::pow(10.0, place);
+    return {std::round(value.value * multiplier) / multiplier, value.unit};
 }
 dv::EValue dv::builtins::arcsin(double value){
-    return 0.0;
+    return std::asin(value);
 }
 dv::EValue dv::builtins::arccos(double value){
-    return 0.0;
+    return std::acos(value);
 }
 dv::EValue dv::builtins::arctan(double value){
-    return 0.0;
+    return std::atan(value);
 }
 dv::EValue dv::builtins::arcsec(double value){
-    return 0.0;
+    return 1.0 / std::acos(value);
 }
 dv::EValue dv::builtins::arccsc(double value){
-    return 0.0;
+    return 1.0 / std::asin(value);
 }
 dv::EValue dv::builtins::arccot(double value){
-    return 0.0;
+    return 1.0 / std::atan(value);
 }

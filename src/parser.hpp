@@ -22,10 +22,13 @@ namespace dv {
         std::pair<std::int32_t, std::int32_t> precedence(dv::TokenType type);
         bool is_atom(dv::TokenType type);
         bool is_implicit_atom(dv::TokenType type);
+        bool is_builtin_function(dv::TokenType type);
         AST *parse_unary();
         AST *parse_postfix();
         AST *parse_atom();
         std::unique_ptr<AST> match_lhs(const dv::Token &token);
+        std::unique_ptr<dv::AST> match_fraction(const dv::Token &token);
+        std::unique_ptr<dv::AST> match_builtin_function(const dv::Token &token);
         std::unique_ptr<AST> parse_expression(std::int32_t min_binding_power);
     };
 }

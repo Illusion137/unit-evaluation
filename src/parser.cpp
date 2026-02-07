@@ -93,8 +93,11 @@ std::unique_ptr<dv::AST> dv::Parser::match_fraction(const dv::Token &token){
 std::unique_ptr<dv::AST> dv::Parser::match_builtin_function(const dv::Token &token){
     bool openparen = match(TokenType::LEFT_PAREN);
     std::unique_ptr<AST> arg = nullptr;
-    if(openparen) arg = parse_expression(0);
-    else arg = parse_expression(0);
+    if(openparen) {
+        arg = parse_expression(0);
+        match(TokenType::RIGHT_PAREN);
+    }
+    else arg = parse_expression(19);
     return std::make_unique<AST>(token, std::move(arg), nullptr);
 }
 

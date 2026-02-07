@@ -8,9 +8,9 @@
 
 template <std::size_t N>
 struct LiteralString {
-    consteval LiteralString(const char (&s)[N]) { std::copy(s, s + N, &data[0]); }
+    consteval LiteralString(const char (&s)[N]) { std::copy(s, s + N - 1, &data[0]); }
 
-    static constexpr std::size_t size = N;
+    static constexpr std::size_t size = N - 1;
     char data[N]{};
 };
 
@@ -74,12 +74,13 @@ dv::Token dv::Lexer::get_numeric_literal_token() noexcept{
     const char *begit = it;
     bool used_decimal = false;
     std::array<char, 32> buffer;
+    buffer.fill(0);
     std::uint8_t write = 0;
     buffer[write++] = peek();
     if(peek() == '.') used_decimal = true;
     advance();
     char c;
-    while((c = peek()) && std::isdigit(c) && write < buffer.size()){
+    while((c = peek()) && (std::isdigit(c) || c == '.') && write < buffer.size()){
         if(used_decimal && c == '.') return {TokenType::BAD_NUMERIC, begit};
         if(c == '.') used_decimal = true;
         buffer[write++] = c;
@@ -115,6 +116,7 @@ std::int32_t dv::Lexer::collect_subscript(char *buffer, std::size_t size, std::u
 dv::Token dv::Lexer::get_indentifier_token() noexcept{
     const char *begit = it;
     std::array<char, 32> buffer;
+    buffer.fill(0);
     std::uint8_t write = 0;
     char c;
     while((c = peek()) && std::isalpha(c) && write < buffer.size()){
@@ -130,6 +132,17 @@ dv::Token dv::Lexer::get_indentifier_token() noexcept{
 }
 dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
     advance();
+        if(remaining_length() >= 8) {
+        switch(strint(it, 8)) {
+            case strint<"sin^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCSIN, 8);
+            case strint<"cos^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCCOS, 8);
+            case strint<"tan^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCTAN, 8);
+            case strint<"sec^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCSEC, 8);
+            case strint<"csc^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCCSC, 8);
+            case strint<"cot^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCCOT, 8);
+            default: break;
+        }
+    }
     if(remaining_length() >= 6) {
         switch(strint(it, 6)) {
             case strint<"arcsin">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCSIN, 6);

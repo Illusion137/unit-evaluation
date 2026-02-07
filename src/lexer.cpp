@@ -115,13 +115,13 @@ std::int32_t dv::Lexer::collect_subscript(char *buffer, std::size_t size, std::u
     return 1;
 }
 
-dv::Token dv::Lexer::get_indentifier_token() noexcept{
+dv::Token dv::Lexer::get_indentifier_token(std::uint32_t max_length) noexcept{
     const char *begit = it;
     std::array<char, 32> buffer;
     buffer.fill(0);
     std::uint8_t write = 0;
     char c;
-    while((c = peek()) && std::isalpha(c) && write < buffer.size()){
+    while((c = peek()) && std::isalpha(c) && write < buffer.size() && write < max_length){
         buffer[write++] = c;
         advance();
     }
@@ -228,7 +228,7 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
         case '\\': return get_special_indentifier_token();
         default: {
             if(isnumeric(peek())) return get_numeric_literal_token();
-            if(std::isalpha(peek())) return get_indentifier_token();
+            if(std::isalpha(peek())) return get_indentifier_token(1);
         };
     }
     return {TokenType::UNKNOWN, it};

@@ -105,7 +105,7 @@ struct std::formatter<std::vector<dv::Token>> : std::formatter<std::string> {
         auto out = ctx.out();
         out = std::format_to(out, "[");
         for (size_t i = 0; i < vec.size(); ++i) {
-            out = std::format_to(out, "\n\t\"{}\"", vec[i]);
+            out = std::format_to(out, "\n  {}", vec[i]);
             if (i + 1 < vec.size()) out = std::format_to(out, ", ");
         }
         out = std::format_to(out, "\n]");

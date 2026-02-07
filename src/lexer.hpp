@@ -27,7 +27,7 @@ namespace dv {
         std::int32_t collect_subscript(char *buffer, std::size_t size, std::uint8_t &write) noexcept;
         Token consume_next_token() noexcept;
         Token get_numeric_literal_token() noexcept;
-        Token get_indentifier_token() noexcept;
+        Token get_indentifier_token(std::uint32_t max_length = UINT32_MAX) noexcept;
         Token get_special_indentifier_token() noexcept;
     };
 }

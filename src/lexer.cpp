@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cstdlib>
+#include <expected>
 
 #define M_PI 3.14159265358979323846264338327950288
 
@@ -39,13 +40,14 @@ dv::Lexer::Lexer(const std::string_view view) noexcept{
     it = begin;
     length = view.size();
 }
-std::vector<dv::Token> dv::Lexer::extract_all_tokens() noexcept{
+dv::Lexer::MaybeTokens dv::Lexer::extract_all_tokens() noexcept{
     std::vector<Token> tokens;
     tokens.reserve(length / 2);
     Token token;
-    while((token = consume_next_token()).type != TokenType::TEOF && token.type != TokenType::UNKNOWN){
-        // TODO add #IF guards
-        // std::println("TT: {}", token);
+    while((token = consume_next_token()).type != TokenType::TEOF){
+        if(token.has_error()) {
+            return std::unexpected{token.get_error_message()};
+        }
         tokens.emplace_back(std::move(token));
     }
     tokens.emplace_back(TokenType::TEOF, "");

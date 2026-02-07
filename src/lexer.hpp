@@ -1,13 +1,15 @@
 #pragma once
 
 #include "token.hpp"
+#include <expected>
 #include <vector>
 
 namespace dv {
     class Lexer {
     public:
         Lexer(const std::string_view view) noexcept;
-        std::vector<Token> extract_all_tokens() noexcept;
+        using MaybeTokens = std::expected<std::vector<dv::Token>, std::string>;
+        MaybeTokens extract_all_tokens() noexcept;
     private:
         std::uint32_t length;
         const char *begin;

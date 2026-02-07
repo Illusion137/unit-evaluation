@@ -6,10 +6,10 @@
 
 namespace dv {
     enum class TokenType {
-        BAD_IDENTIFIER = -2,
-        BAD_NUMERIC = -1,
-        UNKNOWN = 0,
-        TEOF = 1,
+        BAD_IDENTIFIER = -3,
+        BAD_NUMERIC = -2,
+        UNKNOWN = -1,
+        TEOF = 0,
         NUMERIC_LITERAL,
         IDENTIFIER,
         EQUAL,
@@ -62,6 +62,23 @@ namespace dv {
         Token(const TokenType token_type, const std::string_view token_text): type{token_type}, text{token_text}, value{0} {}
         Token(const TokenType token_type, const double token_value, const std::string_view token_text): type{token_type}, text{token_text}, value{token_value} {}
         operator bool() const noexcept{ return type != TokenType::TEOF; }
+        inline bool has_error() const noexcept{
+            switch (type) {
+                case TokenType::BAD_IDENTIFIER:
+                case TokenType::BAD_NUMERIC:
+                case TokenType::UNKNOWN:
+                    return true; 
+                default: return false;
+            }
+        }
+        inline std::string get_error_message() const noexcept{
+            switch (type) {
+                case TokenType::BAD_IDENTIFIER: return std::format("Bad Indentifer: '{}'", text);
+                case TokenType::BAD_NUMERIC: return std::format("Bad Numeric, numbers can't have two decimals: '{}'", text);
+                case TokenType::UNKNOWN: return std::format("Unknown Token: '{}'", text); 
+                default: return "";
+            }
+        }
     };
 };
 template <>

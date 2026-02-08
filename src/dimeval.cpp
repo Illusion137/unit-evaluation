@@ -59,9 +59,9 @@ dv::EValue dv::EValue::operator^(const EValue &rhs) const noexcept {
     return { std::pow(this->value, rhs.value), this->unit ^ rhs.unit };
 }
 dv::EValue dv::EValue::fact() const noexcept {
-    uint64_t fact = 1;
+    long double fact = 1;
     for(uint32_t i = 2; i <= (uint64_t)this->value; i++) fact *= i;
-    return { (double)fact, { 0 } };
+    return { fact, { 0 } };
 }
 dv::EValue dv::EValue::abs() const noexcept {
     return { std::fabs(this->value), this->unit };

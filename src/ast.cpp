@@ -20,37 +20,35 @@ dv::EValue dv::AST::evaluate(const AST *ast) {
         case TokenType::NUMERIC_LITERAL: return std::get<AST::ASTExpression>(ast->data).value;
         // case TokenType::IDENTIFIER: return vars[node.symbol];
         case TokenType::PLUS: {
-            const dv::EValue lhs = evaluate(std::get<AST::ASTExpression>(ast->data).lhs);
-            const dv::EValue rhs = evaluate(std::get<AST::ASTExpression>(ast->data).rhs);
-            return lhs + rhs;
+            const auto &rhs = std::get<AST::ASTExpression>(ast->data).rhs;
+            const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate();
+            if(rhs == nullptr) return lhs;
+            return lhs + rhs->evaluate();
         }
         case TokenType::MINUS: {
-            const dv::EValue lhs = evaluate(std::get<AST::ASTExpression>(ast->data).lhs);
-            const dv::EValue rhs = evaluate(std::get<AST::ASTExpression>(ast->data).rhs);
-            return lhs - rhs;
+            const auto &rhs = std::get<AST::ASTExpression>(ast->data).rhs;
+            const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate();
+            if(rhs == nullptr) return -lhs;
+            return lhs - rhs->evaluate();
         }
-        // case TokenType::UNARY_MINUS: {
-        //     const dv::EValue lhs = evaluate(std::get<AST::ASTExpression>(ast->data).lhs);
-        //     return -lhs;
-        // }
         case TokenType::TIMES: {
-            const dv::EValue lhs = evaluate(std::get<AST::ASTExpression>(ast->data).lhs);
-            const dv::EValue rhs = evaluate(std::get<AST::ASTExpression>(ast->data).rhs);
+            const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate();
+            const dv::EValue rhs = std::get<AST::ASTExpression>(ast->data).rhs->evaluate();
             return lhs * rhs;
         }
         case TokenType::FRACTION: {
-            const dv::EValue lhs = evaluate(std::get<AST::ASTExpression>(ast->data).lhs);
-            const dv::EValue rhs = evaluate(std::get<AST::ASTExpression>(ast->data).rhs);
+            const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate();
+            const dv::EValue rhs = std::get<AST::ASTExpression>(ast->data).rhs->evaluate();
             return lhs / rhs;
         }
         case TokenType::EXPONENT: {
-            const dv::EValue lhs = evaluate(std::get<AST::ASTExpression>(ast->data).lhs);
-            const dv::EValue rhs = evaluate(std::get<AST::ASTExpression>(ast->data).rhs);
+            const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate();
+            const dv::EValue rhs = std::get<AST::ASTExpression>(ast->data).rhs->evaluate();
             return lhs ^ rhs;
         }
         case TokenType::DIVIDE:
         case TokenType::FACTORIAL: {
-            const dv::EValue lhs = evaluate(std::get<AST::ASTExpression>(ast->data).lhs);
+            const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate();
             return lhs.fact();
         }
         case TokenType::BUILTIN_FUNC_LN: {

@@ -42,7 +42,7 @@ std::int32_t dv::Parser::builtin_function_args(dv::TokenType type){
 std::pair<std::int32_t, std::int32_t> dv::Parser::precedence(dv::TokenType type){
     switch (type) {
         case dv::TokenType::EQUAL:
-            return { 0, 0 };
+            return { 1, 1 };
         case dv::TokenType::PLUS:
         case dv::TokenType::MINUS:
             return { 10, 11 };
@@ -109,6 +109,24 @@ bool dv::Parser::is_builtin_function(dv::TokenType type){
         default: return false;
     }
 }
+
+bool dv::Parser::is_unary_prefix_op(dv::TokenType type){
+    switch (type) {
+        case dv::TokenType::PLUS:
+        case dv::TokenType::MINUS:
+            return true;
+        default: return false;
+    }
+}
+
+bool dv::Parser::is_unary_postfix_op(dv::TokenType type){
+    switch (type) {
+        case dv::TokenType::FACTORIAL:
+            return true;
+        default: return false;
+    }
+}
+
 bool dv::Parser::can_implicit_multiply_left(const AST& ast) {
     return is_atom(ast.token.type);
 }
@@ -166,7 +184,7 @@ dv::Parser::MaybeAST dv::Parser::match_fraction(const dv::Token &token){
     return std::make_unique<AST>(token, std::move(numerator.value()), std::move(denominator.value()));
 }
 
-dv::Parser::MaybeAST dv::Parser::match_exponent(const dv::Token &token, std::int32_t right_binding_power){
+dv::Parser::MaybeAST dv::Parser::match_exponent(std::int32_t right_binding_power){
     const bool uses_brackets = match(TokenType::LEFT_CURLY_BRACKET);
     MaybeAST rhs = nullptr;
     if(uses_brackets){
@@ -223,6 +241,14 @@ dv::Parser::MaybeAST dv::Parser::match_log(const dv::Token &token){
             } 
         }
     }
+
+    Token peeked_exponent = peek();
+    MaybeAST exponent = nullptr;
+    if(match(TokenType::EXPONENT)){
+        exponent = match_exponent(0);
+        if(!exponent) return exponent;
+    }
+
     const bool using_parentheses = match(TokenType::LEFT_PAREN);
     auto arg = parse_expression(!using_parentheses ? 19 : 0);
     if(!arg) return arg;
@@ -230,7 +256,8 @@ dv::Parser::MaybeAST dv::Parser::match_log(const dv::Token &token){
     if(using_parentheses && !match(TokenType::RIGHT_PAREN)){
         return std::unexpected{"Missing closing parentheses"};
     }
-    return std::make_unique<AST>(token, std::move(args), std::move(base.value()));
+    return !exponent.value() ? std::make_unique<AST>(token, std::move(args), std::move(base.value()))
+        : std::make_unique<AST>(peeked_exponent, std::make_unique<AST>(token, std::move(args), std::move(base.value())), std::move(exponent.value()));
 }
 
 dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
@@ -240,18 +267,26 @@ dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
     if(token.type == TokenType::BUILTIN_FUNC_SQRT) return match_sqrt(token);
     if(token.type == TokenType::BUILTIN_FUNC_LOG) return match_log(token);
 
+    Token peeked_exponent = peek();
+    MaybeAST exponent = nullptr;
+    if(match(TokenType::EXPONENT)){
+        exponent = match_exponent(0);
+        if(!exponent) return exponent;
+    }
+
     const bool using_parentheses = match(TokenType::LEFT_PAREN);
     if(!using_parentheses && args_count != 1) return std::unexpected{"Functions that aren't exactly 1 argument require parentheses"};
     
     std::vector<std::unique_ptr<AST>> args;
     args.reserve(builtin_function_args(token.type));
-    
+
     if(!using_parentheses){
         auto arg = parse_expression(19);
         if(!arg) return arg;
         args.emplace_back(std::move(arg.value()));
 
-        return std::make_unique<AST>(token, std::move(args));
+        return !exponent.value() ? std::make_unique<AST>(token, std::move(args))
+            : std::make_unique<AST>(peeked_exponent, std::make_unique<AST>(token, std::move(args)), std::move(exponent.value()));
     }
     
     for(std::uint32_t i = 0; i < args_count - 1; i++){
@@ -265,24 +300,40 @@ dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
     if(!match(TokenType::RIGHT_PAREN)) return std::unexpected{"No closing parentheses found for this function"};
     args.emplace_back(std::move(arg.value()));
 
-    return std::make_unique<AST>(token, std::move(args));
+    return !exponent.value() ? std::make_unique<AST>(token, std::move(args))
+        : std::make_unique<AST>(peeked_exponent, std::make_unique<AST>(token, std::move(args)), std::move(exponent.value()));
+}
+
+dv::Parser::MaybeAST dv::Parser::match_atom(const dv::Token &token){
+    if(token.type == TokenType::NUMERIC_LITERAL) return std::make_unique<AST>(token);
+    if(token.type == TokenType::FRACTION) return match_fraction(token);
+    if(is_builtin_function(token.type)) return match_builtin_function(token);
+    return nullptr;
 }
 
 dv::Parser::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
     if(is_atom(token.type)){
-        if(token.type == TokenType::NUMERIC_LITERAL) return std::make_unique<AST>(token);
-        if(token.type == TokenType::FRACTION) return match_fraction(token);
-        if(is_builtin_function(token.type)) return match_builtin_function(token);
-        // TODO fill this
+        auto lhs = match_atom(token).value();
+        if(is_unary_postfix_op(peek().type)){
+            if(!lhs) return lhs;
+            return std::make_unique<AST>(next(), std::move(lhs), nullptr);
+        }
+        else if(lhs != nullptr) return lhs;
     }
     if(token.type == TokenType::LEFT_PAREN){
         auto lhs = parse_expression(0);
-        if(!match(TokenType::RIGHT_PAREN)) throw "MISSING RIGHT PAREN";
+        if(!match(TokenType::RIGHT_PAREN)) return std::unexpected{"Missing right parentheses"};
         return lhs;
     }
+    if(is_unary_prefix_op(token.type)) {
+        if(!(is_atom(peek().type) || is_unary_prefix_op(peek().type))) return std::unexpected{"Unary Minus can only be used on an atom or another prefix unary op"};
+        auto lhs = match_lhs(next());
+        if(!lhs) return lhs;
+        return std::make_unique<AST>(token, std::move(lhs.value()), nullptr);
+    }
     return std::make_unique<AST>(token);
+    // TODO investigate return std::unexpected{"No valid LHS token found"};
 }
-// TODO prefix ops
 // TODO postfix ops
 dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power) {
     auto lhs = match_lhs(next());
@@ -303,7 +354,7 @@ dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power
 
         if(!is_implicit_multiplication) next();
 
-        auto rhs = op.type != TokenType::EXPONENT ? parse_expression(right_binding_power) : match_exponent(op, right_binding_power);
+        auto rhs = op.type != TokenType::EXPONENT ? parse_expression(right_binding_power) : match_exponent(right_binding_power);
         if(!rhs) return rhs;
         lhs = std::make_unique<AST>(op, std::move(lhs.value()), std::move(rhs.value()));
     }

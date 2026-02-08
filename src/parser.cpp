@@ -1,6 +1,9 @@
 #include "parser.hpp"
 #include "ast.hpp"
 #include "token.hpp"
+#include <cstddef>
+#include <expected>
+#include <format>
 #include <memory>
 
 bool dv::Parser::match(dv::TokenType type) {
@@ -8,15 +11,47 @@ bool dv::Parser::match(dv::TokenType type) {
     return false;
 }
 
+std::int32_t dv::Parser::builtin_function_args(dv::TokenType type){
+    switch (type) {
+        case dv::TokenType::BUILTIN_FUNC_LN: return 1;
+        case dv::TokenType::BUILTIN_FUNC_SIN: return 1;
+        case dv::TokenType::BUILTIN_FUNC_COS: return 1;
+        case dv::TokenType::BUILTIN_FUNC_TAN: return 1;
+        case dv::TokenType::BUILTIN_FUNC_SEC: return 1;
+        case dv::TokenType::BUILTIN_FUNC_CSC: return 1;
+        case dv::TokenType::BUILTIN_FUNC_COT: return 1;
+        case dv::TokenType::BUILTIN_FUNC_LOG: return 1;
+        case dv::TokenType::BUILTIN_FUNC_ABS: return 1;
+        case dv::TokenType::BUILTIN_FUNC_NCR: return 2;
+        case dv::TokenType::BUILTIN_FUNC_NPR: return 2;
+        case dv::TokenType::BUILTIN_FUNC_SQRT: return 1;
+        case dv::TokenType::BUILTIN_FUNC_CEIL: return 1;
+        case dv::TokenType::BUILTIN_FUNC_FACT: return 1;
+        case dv::TokenType::BUILTIN_FUNC_FLOOR: return 1;
+        case dv::TokenType::BUILTIN_FUNC_ROUND: return 2;
+        case dv::TokenType::BUILTIN_FUNC_ARCSIN: return 1;
+        case dv::TokenType::BUILTIN_FUNC_ARCCOS: return 1;
+        case dv::TokenType::BUILTIN_FUNC_ARCTAN: return 1;
+        case dv::TokenType::BUILTIN_FUNC_ARCSEC: return 1;
+        case dv::TokenType::BUILTIN_FUNC_ARCCSC: return 1;
+        case dv::TokenType::BUILTIN_FUNC_ARCCOT: return 1;
+        default: return 0;
+    }
+}
+
 std::pair<std::int32_t, std::int32_t> dv::Parser::precedence(dv::TokenType type){
     switch (type) {
+        case dv::TokenType::EQUAL:
+            return { 0, 0 };
         case dv::TokenType::PLUS:
         case dv::TokenType::MINUS:
             return { 10, 11 };
         case dv::TokenType::TIMES:
         case dv::TokenType::DIVIDE:
             return { 20, 21 };
-            case dv::TokenType::EXPONENT:
+        case dv::TokenType::FACTORIAL:
+            return { 20, 25 };
+        case dv::TokenType::EXPONENT:
             return { 31, 30 };
         default: return {-1, -1};
     }
@@ -40,6 +75,7 @@ bool dv::Parser::is_binop(dv::TokenType type) {
         case dv::TokenType::TIMES:
         case dv::TokenType::DIVIDE:
         case dv::TokenType::EXPONENT:
+        case dv::TokenType::EQUAL:
             return true;
         default: return false;
     }
@@ -77,31 +113,82 @@ bool dv::Parser::can_implicit_multiply_left(const AST& ast) {
     return is_atom(ast.token.type);
 }
 
-std::unique_ptr<dv::AST> dv::Parser::match_curly(){
-    match(TokenType::LEFT_CURLY_BRACKET);
+dv::Parser::MaybeAST dv::Parser::match_square_bracket(){
+    if(!match(TokenType::LEFT_BRACKET)){
+        return std::unexpected{std::format("Unexpected: {}; Expected '['", peek())};
+    }
     auto ast = parse_expression(0);
-    match(TokenType::RIGHT_CURLY_BRACKET);
+    if(!ast) return ast;
+    if(!match(TokenType::RIGHT_BRACKET)){
+        return std::unexpected{std::format("Unexpected: {}; Expected ']'", peek())};
+    }
     return ast;
 }
 
-std::unique_ptr<dv::AST> dv::Parser::match_fraction(const dv::Token &token){
-    std::unique_ptr<dv::AST> numerator = match_curly();
-    std::unique_ptr<dv::AST> denominator = match_curly();
-    return std::make_unique<AST>(token, std::move(numerator), std::move(denominator));
-}
-
-std::unique_ptr<dv::AST> dv::Parser::match_builtin_function(const dv::Token &token){
-    bool openparen = match(TokenType::LEFT_PAREN);
-    std::unique_ptr<AST> arg = nullptr;
-    if(openparen) {
-        arg = parse_expression(0);
-        match(TokenType::RIGHT_PAREN);
+dv::Parser::MaybeAST dv::Parser::match_curly_bracket(){
+    if(!match(TokenType::LEFT_CURLY_BRACKET)){
+        return std::unexpected{std::format("Unexpected: {}; Expected '{{'", peek())};
     }
-    else arg = parse_expression(19);
-    return std::make_unique<AST>(token, std::move(arg), nullptr);
+    auto ast = parse_expression(0);
+    if(!ast) return ast;
+    if(!match(TokenType::RIGHT_CURLY_BRACKET)){
+        return std::unexpected{std::format("Unexpected: {}; Expected '}}'", peek())};
+    }
+    return ast;
 }
 
-std::unique_ptr<dv::AST> dv::Parser::match_lhs(const dv::Token &token){
+dv::Parser::MaybeAST dv::Parser::match_parentheses(){
+    if(!match(TokenType::LEFT_PAREN)){
+        return std::unexpected{std::format("Unexpected: {}; Expected '('", peek())};
+    }
+    auto ast = parse_expression(0);
+    if(!ast) return ast;
+    if(!match(TokenType::RIGHT_PAREN)){
+        return std::unexpected{std::format("Unexpected: {}; Expected ')'", peek())};
+    }
+    return ast;
+}
+
+dv::Parser::MaybeAST dv::Parser::match_fraction(const dv::Token &token){
+    auto numerator = match_curly_bracket();
+    if(!numerator) return numerator;
+    auto denominator = match_curly_bracket();
+    if(!denominator) return denominator;
+    return std::make_unique<AST>(token, std::move(numerator.value()), std::move(denominator.value()));
+}
+
+dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
+    const auto args_count = builtin_function_args(token.type);
+    if(args_count < 1) return std::unexpected{"Functions require at least one argument"};
+    const bool using_parentheses = match(TokenType::LEFT_PAREN);
+    if(!using_parentheses && args_count != 1) return std::unexpected{"Functions that aren't exactly 1 argument require parentheses"};
+    
+    std::vector<std::unique_ptr<AST>> args;
+    args.reserve(builtin_function_args(token.type));
+    
+    if(!using_parentheses){
+        auto arg = parse_expression(19);
+        if(!arg) return arg;
+        args.emplace_back(std::move(arg.value()));
+
+        return std::make_unique<AST>(token, std::move(args));
+    }
+    
+    for(std::uint32_t i = 0; i < args_count - 1; i++){
+        auto arg = parse_expression(0);
+        if(!arg) return arg;
+        if(!match(TokenType::COMMA)) return std::unexpected{"This function is missing some arguments"};
+        args.emplace_back(std::move(arg.value()));
+    }
+    auto arg = parse_expression(0);
+    if(!arg) return arg;
+    if(!match(TokenType::RIGHT_PAREN)) return std::unexpected{"No closing parentheses found for this function"};
+    args.emplace_back(std::move(arg.value()));
+
+    return std::make_unique<AST>(token, std::move(args));
+}
+
+dv::Parser::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
     if(is_atom(token.type)){
         if(token.type == TokenType::NUMERIC_LITERAL) return std::make_unique<AST>(token);
         if(token.type == TokenType::FRACTION) return match_fraction(token);
@@ -115,14 +202,20 @@ std::unique_ptr<dv::AST> dv::Parser::match_lhs(const dv::Token &token){
     }
     return std::make_unique<AST>(token);
 }
-std::unique_ptr<dv::AST> dv::Parser::parse_expression(std::int32_t min_binding_power) {
-    std::unique_ptr<AST> lhs = match_lhs(next());
+// TODO sqrt special value + brackets parsing
+// TODO log special value
+// TODO prefix ops
+// TODO postfix ops
+dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power) {
+    auto lhs = match_lhs(next());
+    if(!lhs) return lhs;
     while (true) {
         Token op = peek();
         if(op.type == TokenType::TEOF) break;
         else if(op.type == TokenType::RIGHT_PAREN) break;
         else if(op.type == TokenType::RIGHT_CURLY_BRACKET) break;
-        
+        else if(op.type == TokenType::COMMA) break;
+
         const bool is_implicit_multiplication = !is_binop(op.type);
         if(is_implicit_multiplication) op = {TokenType::TIMES, "*"};
         
@@ -132,7 +225,8 @@ std::unique_ptr<dv::AST> dv::Parser::parse_expression(std::int32_t min_binding_p
         if(!is_implicit_multiplication) next();
 
         auto rhs = parse_expression(right_binding_power);
-        lhs = std::make_unique<AST>(op, std::move(lhs), std::move(rhs));
+        if(!rhs) return rhs;
+        lhs = std::make_unique<AST>(op, std::move(lhs.value()), std::move(rhs.value()));
     }
 
     return lhs;

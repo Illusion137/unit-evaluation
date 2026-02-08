@@ -2,17 +2,28 @@
 
 #include "dimeval.hpp"
 #include "token.hpp"
+#include <cstddef>
 #include <memory>
+#include <variant>
 
 namespace dv {
     struct AST {
+        struct ASTExpression {
+            std::unique_ptr<AST> lhs;
+            std::unique_ptr<AST> rhs;
+            dv::EValue value;
+        };
+        struct ASTCall {
+            std::vector<std::unique_ptr<AST>> args;
+            double special_value = 0.0;
+        };
         Token token;
-        std::unique_ptr<AST> lhs = nullptr;
-        std::unique_ptr<AST> rhs = nullptr;
-        dv::EValue value;
-        AST(): token(TokenType::UNKNOWN, ""), value(0.0) {}
-        AST(const Token token): token(token), value(token.value) {}
-        AST(const Token token, std::unique_ptr<AST> lhs, std::unique_ptr<AST> rhs): token{token}, lhs{std::move(lhs)}, rhs{std::move(rhs)}, value(0.0) {}
+        std::variant<ASTExpression, ASTCall> data;
+        
+        AST(): token(TokenType::UNKNOWN, ""), data{ASTExpression{nullptr, nullptr, 0.0}}{}
+        AST(const Token token): token(token), data(ASTExpression{nullptr, nullptr, token.value}) {}
+        AST(const Token token, std::unique_ptr<AST> lhs, std::unique_ptr<AST> rhs): token{token}, data{ASTExpression{std::move(lhs), std::move(rhs), 0.0}} {}
+        AST(const Token token, std::vector<std::unique_ptr<AST>> args, double special_value = 0.0): token{token}, data{ASTCall{std::move(args), special_value}} {}
         dv::EValue evaluate();
         dv::EValue evaluate(const AST *ast);
         dv::EValue evaluate(const std::unique_ptr<AST> &ast);

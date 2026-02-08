@@ -64,6 +64,7 @@ namespace dv {
     struct EValue {
         long double value;
         UnitVector unit;
+        EValue() : value{0.0}, unit{DIMENSIONLESS_VEC} {}
         EValue(const long double val): value{val}, unit{DIMENSIONLESS_VEC} {}
         EValue(const long double val, const UnitVector _unit): value{val}, unit{_unit} {}
         EValue operator+() const noexcept;

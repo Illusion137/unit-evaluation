@@ -15,7 +15,7 @@ dv::EValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
     switch (ast->token.type) {
         case TokenType::EQUAL: {
             auto value = std::get<AST::ASTExpression>(ast->data).rhs->evaluate(evalulator);
-            evalulator.evaluated_variables.insert({std::string{std::get<AST::ASTExpression>(ast->data).lhs->token.text}, value});
+            evalulator.evaluated_variables.insert_or_assign(std::string{std::get<AST::ASTExpression>(ast->data).lhs->token.text}, value);
             // TODO lhs should be a single token
             return value;
         }

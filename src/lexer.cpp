@@ -5,8 +5,6 @@
 #include <cstdlib>
 #include <expected>
 
-#define M_PI 3.14159265358979323846264338327950288
-
 template <std::size_t N>
 struct LiteralString {
     consteval LiteralString(const char (&s)[N]) { std::copy(s, s + N - 1, &data[0]); }

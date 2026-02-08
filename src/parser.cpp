@@ -346,7 +346,7 @@ dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power
         else if(op.type == TokenType::RIGHT_CURLY_BRACKET) break;
         else if(op.type == TokenType::COMMA) break;
 
-        const bool is_implicit_multiplication = !is_binop(op.type);
+        const bool is_implicit_multiplication = !is_binop(op.type) && peek_next().type != TokenType::TEOF;
         if(is_implicit_multiplication) op = {TokenType::TIMES, "*"};
         
         const auto [ left_binding_power, right_binding_power ] = precedence(op.type);

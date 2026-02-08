@@ -17,6 +17,7 @@ namespace dv {
         std::size_t position = 0;
     
         inline Token& peek() { return tokens[position]; }
+        inline Token& peek_next() { return tokens[position + 1]; }
         inline Token& next() { return tokens[position++]; }
 
         bool match(dv::TokenType type);

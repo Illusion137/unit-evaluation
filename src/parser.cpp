@@ -5,7 +5,6 @@
 #include <expected>
 #include <format>
 #include <memory>
-#include <print>
 
 bool dv::Parser::match(dv::TokenType type) {
     if (peek().type == type) { position++; return true; }
@@ -114,6 +113,15 @@ bool dv::Parser::can_implicit_multiply_left(const AST& ast) {
     return is_atom(ast.token.type);
 }
 
+dv::Parser::MaybeAST dv::Parser::split_single_numeric(){
+    if(peek().text[0] == '.') return std::unexpected{"Split numeric can't be '.'"};  
+    Token base_token = {TokenType::NUMERIC_LITERAL, (double)(peek().text[0] - '0'), peek().text.substr(0, 1)};
+    dv::Parser::MaybeAST value = std::make_unique<AST>(base_token);
+    peek().text = peek().text.substr(1);
+    peek().value = std::atof(std::string{peek().text}.c_str());
+    return value;
+}
+
 dv::Parser::MaybeAST dv::Parser::match_square_bracket(){
     if(!match(TokenType::LEFT_BRACKET)){
         return std::unexpected{std::format("Unexpected: {}; Expected '['", peek())};
@@ -158,6 +166,22 @@ dv::Parser::MaybeAST dv::Parser::match_fraction(const dv::Token &token){
     return std::make_unique<AST>(token, std::move(numerator.value()), std::move(denominator.value()));
 }
 
+dv::Parser::MaybeAST dv::Parser::match_exponent(const dv::Token &token, std::int32_t right_binding_power){
+    const bool uses_brackets = match(TokenType::LEFT_CURLY_BRACKET);
+    MaybeAST rhs = nullptr;
+    if(uses_brackets){
+        rhs = parse_expression(right_binding_power);
+        if(!rhs) return rhs;
+        if(uses_brackets && !match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{"Expected '}'"};
+    }
+    else {
+        rhs = split_single_numeric();
+        if(!rhs) return rhs;
+    }
+    return std::move(rhs.value());
+}
+
+
 dv::Parser::MaybeAST dv::Parser::match_sqrt(const dv::Token &token){
     MaybeAST n = nullptr;
     std::vector<std::unique_ptr<AST>> args;
@@ -173,7 +197,7 @@ dv::Parser::MaybeAST dv::Parser::match_sqrt(const dv::Token &token){
     args.emplace_back(std::move(arg.value()));
     return std::make_unique<AST>(token, std::move(args), std::move(n.value()));
 }
-// \log455+\log_28+\log_{25}\left(5\right)
+
 dv::Parser::MaybeAST dv::Parser::match_log(const dv::Token &token){
     MaybeAST base = nullptr;
     std::vector<std::unique_ptr<AST>> args;
@@ -194,11 +218,8 @@ dv::Parser::MaybeAST dv::Parser::match_log(const dv::Token &token){
                 base = std::make_unique<AST>(next());
             }
             else {
-                if(peek().text[0] == '.') return std::unexpected{"Base can't be '.'"};  
-                Token base_token = {TokenType::NUMERIC_LITERAL, (double)(peek().text[0] - '0'), peek().text.substr(0, 1)};
-                base = std::make_unique<AST>(base_token);
-                peek().text = peek().text.substr(1);
-                peek().value = std::atof(std::string{peek().text}.c_str());
+                base = split_single_numeric();
+                if(!base) return base;
             } 
         }
     }
@@ -261,8 +282,6 @@ dv::Parser::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
     }
     return std::make_unique<AST>(token);
 }
-// TODO sqrt special value + brackets parsing
-// TODO log special value
 // TODO prefix ops
 // TODO postfix ops
 dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power) {
@@ -284,7 +303,7 @@ dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power
 
         if(!is_implicit_multiplication) next();
 
-        auto rhs = parse_expression(right_binding_power);
+        auto rhs = op.type != TokenType::EXPONENT ? parse_expression(right_binding_power) : match_exponent(op, right_binding_power);
         if(!rhs) return rhs;
         lhs = std::make_unique<AST>(op, std::move(lhs.value()), std::move(rhs.value()));
     }

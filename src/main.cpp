@@ -5,7 +5,7 @@
 #include <string_view>
 
 int main(){
-    const std::string_view test_input = "\\sqrt[3]{27}+\\sqrt{100}+\\sqrt[2\\cdot3]{46656}";
+    const std::string_view test_input = "2^{3^{\\cos\\left(1\\right)}}+6";
     // const std::string_view test_input = "x = 5\\cos(2\\pi) + \\nCr(5, 2)";
     // const std::string_view test_input = "(5 + 2 * 10 * (5 - 4)) / 2";
     // const std::string_view test_input = "5\\left(\\arcsin\\cos^{-1}\\left(x\\right)\\right)+\\frac{2^2}{3^2}-3\\cdot3+e_c+m_{electron}+\\frac{1}{2}mv^2-1!-3\\pi\\lambda+\\sqrt[3]{2^{\\pi}}";

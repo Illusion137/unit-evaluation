@@ -5,6 +5,7 @@
 #include <expected>
 #include <format>
 #include <memory>
+#include <print>
 
 bool dv::Parser::match(dv::TokenType type) {
     if (peek().type == type) { position++; return true; }
@@ -157,9 +158,67 @@ dv::Parser::MaybeAST dv::Parser::match_fraction(const dv::Token &token){
     return std::make_unique<AST>(token, std::move(numerator.value()), std::move(denominator.value()));
 }
 
+dv::Parser::MaybeAST dv::Parser::match_sqrt(const dv::Token &token){
+    MaybeAST n = nullptr;
+    std::vector<std::unique_ptr<AST>> args;
+    args.reserve(1);
+    if(peek().type == TokenType::LEFT_BRACKET){
+        n = match_square_bracket();
+        if(!n) return n;
+    }
+    if(!match(TokenType::LEFT_CURLY_BRACKET)) return std::unexpected{"Sqrt requires left curly brace"};
+    auto arg = parse_expression(0);
+    if(!arg) return arg;
+    if(!match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{"Sqrt requires right curly brace"};
+    args.emplace_back(std::move(arg.value()));
+    return std::make_unique<AST>(token, std::move(args), std::move(n.value()));
+}
+// \log455+\log_28+\log_{25}\left(5\right)
+dv::Parser::MaybeAST dv::Parser::match_log(const dv::Token &token){
+    MaybeAST base = nullptr;
+    std::vector<std::unique_ptr<AST>> args;
+    args.reserve(1);
+    if(match(TokenType::SUBSCRIPT)){
+        if(match(TokenType::LEFT_CURLY_BRACKET)){
+            base = parse_expression(0);
+            if(!base) return base;
+            if(!match(TokenType::RIGHT_CURLY_BRACKET)){
+                return std::unexpected{"Subscript missing closing curly bracket"};
+            }
+        }
+        else if(peek().type != TokenType::NUMERIC_LITERAL){
+            return std::unexpected{"Without curly braces post_subscript must be an numeric literal"};  
+        }
+        else {
+            if(peek().text.size() == 1) {
+                base = std::make_unique<AST>(next());
+            }
+            else {
+                if(peek().text[0] == '.') return std::unexpected{"Base can't be '.'"};  
+                Token base_token = {TokenType::NUMERIC_LITERAL, (double)(peek().text[0] - '0'), peek().text.substr(0, 1)};
+                base = std::make_unique<AST>(base_token);
+                peek().text = peek().text.substr(1);
+                peek().value = std::atof(std::string{peek().text}.c_str());
+            } 
+        }
+    }
+    const bool using_parentheses = match(TokenType::LEFT_PAREN);
+    auto arg = parse_expression(!using_parentheses ? 19 : 0);
+    if(!arg) return arg;
+    args.emplace_back(std::move(arg.value()));
+    if(using_parentheses && !match(TokenType::RIGHT_PAREN)){
+        return std::unexpected{"Missing closing parentheses"};
+    }
+    return std::make_unique<AST>(token, std::move(args), std::move(base.value()));
+}
+
 dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
     const auto args_count = builtin_function_args(token.type);
     if(args_count < 1) return std::unexpected{"Functions require at least one argument"};
+
+    if(token.type == TokenType::BUILTIN_FUNC_SQRT) return match_sqrt(token);
+    if(token.type == TokenType::BUILTIN_FUNC_LOG) return match_log(token);
+
     const bool using_parentheses = match(TokenType::LEFT_PAREN);
     if(!using_parentheses && args_count != 1) return std::unexpected{"Functions that aren't exactly 1 argument require parentheses"};
     
@@ -213,6 +272,7 @@ dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power
         Token op = peek();
         if(op.type == TokenType::TEOF) break;
         else if(op.type == TokenType::RIGHT_PAREN) break;
+        else if(op.type == TokenType::RIGHT_BRACKET) break;
         else if(op.type == TokenType::RIGHT_CURLY_BRACKET) break;
         else if(op.type == TokenType::COMMA) break;
 

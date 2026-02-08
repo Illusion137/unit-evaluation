@@ -15,7 +15,7 @@ namespace dv {
         };
         struct ASTCall {
             std::vector<std::unique_ptr<AST>> args;
-            double special_value = 0.0;
+            std::unique_ptr<AST> special_value;
         };
         Token token;
         std::variant<ASTExpression, ASTCall> data;
@@ -23,7 +23,7 @@ namespace dv {
         AST(): token(TokenType::UNKNOWN, ""), data{ASTExpression{nullptr, nullptr, 0.0}}{}
         AST(const Token token): token(token), data(ASTExpression{nullptr, nullptr, token.value}) {}
         AST(const Token token, std::unique_ptr<AST> lhs, std::unique_ptr<AST> rhs): token{token}, data{ASTExpression{std::move(lhs), std::move(rhs), 0.0}} {}
-        AST(const Token token, std::vector<std::unique_ptr<AST>> args, double special_value = 0.0): token{token}, data{ASTCall{std::move(args), special_value}} {}
+        AST(const Token token, std::vector<std::unique_ptr<AST>> args, std::unique_ptr<AST> special_value = nullptr): token{token}, data{ASTCall{std::move(args), std::move(special_value)}} {}
         dv::EValue evaluate();
         dv::EValue evaluate(const AST *ast);
         dv::EValue evaluate(const std::unique_ptr<AST> &ast);

@@ -83,9 +83,9 @@ dv::EValue dv::AST::evaluate(const AST *ast) {
         }
         case TokenType::BUILTIN_FUNC_LOG: {
             const auto &args = std::get<AST::ASTCall>(ast->data).args;
-            const auto special_value = std::get<AST::ASTCall>(ast->data).special_value;
-            if(special_value == 0) return dv::builtins::log(evaluate(args[0]).value);
-            else return dv::builtins::log(evaluate(args[0]).value, special_value);
+            const auto &special_value = std::get<AST::ASTCall>(ast->data).special_value;
+            if(special_value == nullptr) return dv::builtins::log(evaluate(args[0]).value);
+            else return dv::builtins::log(evaluate(args[0]).value, evaluate(special_value).value);
         }
         case TokenType::BUILTIN_FUNC_ABS: {
             const auto &args = std::get<AST::ASTCall>(ast->data).args;
@@ -101,9 +101,9 @@ dv::EValue dv::AST::evaluate(const AST *ast) {
         }
         case TokenType::BUILTIN_FUNC_SQRT: {
             const auto &args = std::get<AST::ASTCall>(ast->data).args;
-            const auto special_value = std::get<AST::ASTCall>(ast->data).special_value;
-            if(special_value == 0) return dv::builtins::nthsqrt(evaluate(args[0]).value, 2.0);
-            else return dv::builtins::nthsqrt(evaluate(args[0]), special_value);
+            const auto &special_value = std::get<AST::ASTCall>(ast->data).special_value;
+            if(special_value == nullptr) return dv::builtins::nthsqrt(evaluate(args[0]).value, 2.0);
+            else return dv::builtins::nthsqrt(evaluate(args[0]), evaluate(special_value).value);
         }
         case TokenType::BUILTIN_FUNC_CEIL: {
             const auto &args = std::get<AST::ASTCall>(ast->data).args;
@@ -161,7 +161,6 @@ std::string dv::AST::to_string(const std::uint16_t depth) const noexcept{
     }
     else {
         const auto &call = std::get<AST::ASTCall>(this->data);
-        content += std::format("{} [SP]: {}\n", tabs, call.special_value);
         for(std::uint32_t i = 0 ; i < call.args.size(); i++){
             content += call.args[i]->to_string(depth + 1);
         }

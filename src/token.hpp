@@ -23,6 +23,8 @@ namespace dv {
         ABSOLUTE_BAR,
         SUBSCRIPT,
         COMMA,
+        LEFT_ABSOLUTE_BAR,
+        RIGHT_ABSOLUTE_BAR,
         LEFT_CURLY_BRACKET,
         RIGHT_CURLY_BRACKET,
         LEFT_BRACKET,

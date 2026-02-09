@@ -190,13 +190,24 @@ dv::Parser::MaybeAST dv::Parser::match_exponent(std::int32_t right_binding_power
     const bool uses_brackets = match(TokenType::LEFT_CURLY_BRACKET);
     MaybeAST rhs = nullptr;
     if(uses_brackets){
-        rhs = parse_expression(0);
+        rhs = parse_expression(0);  // Parse full expression in braces
         if(!rhs) return rhs;
-        if(uses_brackets && !match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{"Expected '}'"};
+        if(!match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{"Expected '}'"};
     }
     else {
-        rhs = split_single_numeric();
-        if(!rhs) return rhs;
+        // Without brackets, we need to handle two cases:
+        // 1. Multi-digit numbers like 2^34 should parse as 2^3 (implicit multiply 4)
+        // 2. Expressions like 3^2 inside 2^{3^2} should parse the full 3^2
+        
+        // Check if next token is a multi-digit number
+        if(peek().type == TokenType::NUMERIC_LITERAL && peek().text.size() > 1) {
+            rhs = split_single_numeric();
+            if(!rhs) return rhs;
+        } else {
+            // Parse a full expression with the right binding power
+            rhs = parse_expression(right_binding_power);
+            if(!rhs) return rhs;
+        }
     }
     return std::move(rhs.value());
 }
@@ -209,7 +220,22 @@ dv::Parser::MaybeAST dv::Parser::match_absolute_bar(const dv::Token &token){
     }
     std::vector<std::unique_ptr<AST>> args;
     args.emplace_back(std::move(arg.value()));
-    return std::make_unique<AST>(token, std::move(args));
+    // Create an ABS function token
+    Token abs_token{TokenType::BUILTIN_FUNC_ABS, "abs"};
+    return std::make_unique<AST>(abs_token, std::move(args));
+}
+
+dv::Parser::MaybeAST dv::Parser::match_left_absolute_bar(const dv::Token &token){
+    auto arg = parse_expression(0);
+    if(!arg) return arg;
+    if(!match(TokenType::RIGHT_ABSOLUTE_BAR)){
+        return std::unexpected{std::format("Unexpected: {}; Expected right '|'", peek())};
+    }
+    std::vector<std::unique_ptr<AST>> args;
+    args.emplace_back(std::move(arg.value()));
+    // Create an ABS function token
+    Token abs_token{TokenType::BUILTIN_FUNC_ABS, "abs"};
+    return std::make_unique<AST>(abs_token, std::move(args));
 }
 
 dv::Parser::MaybeAST dv::Parser::match_sqrt(const dv::Token &token){
@@ -282,7 +308,8 @@ dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
     Token peeked_exponent = peek();
     MaybeAST exponent = nullptr;
     if(match(TokenType::EXPONENT)){
-        exponent = match_exponent(0);
+        // For function exponents, we use match_exponent with the right binding power
+        exponent = match_exponent(30);  // Use right binding power of exponent
         if(!exponent) return exponent;
     }
 
@@ -318,6 +345,7 @@ dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
 
 dv::Parser::MaybeAST dv::Parser::match_atom(const dv::Token &token){
     if(token.type == TokenType::NUMERIC_LITERAL) return std::make_unique<AST>(token);
+    if(token.type == TokenType::IDENTIFIER) return std::make_unique<AST>(token);
     if(token.type == TokenType::FRACTION) return match_fraction(token);
     if(token.type == TokenType::ABSOLUTE_BAR) return match_absolute_bar(token);
     if(is_builtin_function(token.type)) return match_builtin_function(token);
@@ -331,18 +359,35 @@ dv::Parser::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
         if(is_unary_postfix_op(peek().type)){
             return std::make_unique<AST>(next(), std::move(lhs.value()), nullptr);
         }
-        else if(lhs != nullptr) return lhs;
+        return lhs;
     }
     if(token.type == TokenType::LEFT_PAREN){
         auto lhs = parse_expression(0);
+        if(!lhs) return lhs;
         if(!match(TokenType::RIGHT_PAREN)) return std::unexpected{"Missing right parentheses"};
         return lhs;
     }
-    if(is_unary_prefix_op(token.type)) {
-        if(!(is_atom(peek().type) || peek().type == TokenType::LEFT_PAREN || is_unary_prefix_op(peek().type))) return std::unexpected{"Unary Minus can only be used on an atom or another prefix unary op"};
-        auto lhs = match_lhs(next());
+    if(token.type == TokenType::LEFT_ABSOLUTE_BAR) {
+        auto lhs = parse_expression(0);
         if(!lhs) return lhs;
-        return std::make_unique<AST>(token, std::move(lhs.value()), nullptr);
+        if(!match(TokenType::RIGHT_ABSOLUTE_BAR)) return std::unexpected{"Missing right absolute bar"};
+        return lhs;
+    }
+    if(is_unary_prefix_op(token.type)) {
+        // For unary prefix, we need to allow atoms, parentheses, or other prefix ops
+        // But also need to check we're not at end of expression  
+        if(peek().type == TokenType::TEOF) return std::unexpected{"Unexpected end after unary operator"};
+        if(peek().type == TokenType::RIGHT_PAREN || peek().type == TokenType::RIGHT_BRACKET || 
+           peek().type == TokenType::RIGHT_ABSOLUTE_BAR || 
+           peek().type == TokenType::RIGHT_CURLY_BRACKET || peek().type == TokenType::COMMA ||
+           peek().type == TokenType::ABSOLUTE_BAR) {
+            return std::unexpected{"Unary operator with no operand"};
+        }
+        // Use binding power 15: higher than addition (10) but lower than multiplication (20) and exponent (31)
+        // This makes -5+2 parse as (-5)+2, but -(2+3)^2 needs the parentheses to group (2+3) first
+        auto rhs = parse_expression(15);
+        if(!rhs) return rhs;
+        return std::make_unique<AST>(token, std::move(rhs.value()), nullptr);
     }
     return std::unexpected{"No valid LHS token found"};
 }
@@ -356,7 +401,9 @@ dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power
         else if(op.type == TokenType::RIGHT_PAREN) break;
         else if(op.type == TokenType::RIGHT_BRACKET) break;
         else if(op.type == TokenType::RIGHT_CURLY_BRACKET) break;
+        else if(op.type == TokenType::RIGHT_ABSOLUTE_BAR) break;
         else if(op.type == TokenType::COMMA) break;
+        else if(op.type == TokenType::ABSOLUTE_BAR) break;  // Don't implicit multiply with closing |
 
         const bool is_implicit_multiplication = !is_binop(op.type) && can_implicit_multiply_left(lhs.value()->token);
         if(is_implicit_multiplication) op = {TokenType::TIMES, "*"};

@@ -38,6 +38,7 @@ namespace dv {
         MaybeAST match_curly_bracket();
         MaybeAST match_parentheses();
         MaybeAST match_absolute_bar(const dv::Token &token);
+        MaybeAST match_left_absolute_bar(const dv::Token &token);
         MaybeAST match_sqrt(const dv::Token &token);
         MaybeAST match_log(const dv::Token &token);
         MaybeAST match_builtin_function(const dv::Token &token);

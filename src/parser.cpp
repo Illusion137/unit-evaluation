@@ -192,20 +192,17 @@ dv::Parser::MaybeAST dv::Parser::match_exponent(std::int32_t right_binding_power
     if(uses_brackets){
         rhs = parse_expression(0);  // Parse full expression in braces
         if(!rhs) return rhs;
-        if(!match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{"Expected '}'"};
+        if(!match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{std::format("Expected '}}' but found: {}", peek())};
     }
     else {
-        // Without brackets, we need to handle two cases:
-        // 1. Multi-digit numbers like 2^34 should parse as 2^3 (implicit multiply 4)
-        // 2. Expressions like 3^2 inside 2^{3^2} should parse the full 3^2
-        
-        // Check if next token is a multi-digit number
+        // Without brackets, check if it's a multi-digit number that needs splitting
         if(peek().type == TokenType::NUMERIC_LITERAL && peek().text.size() > 1) {
             rhs = split_single_numeric();
             if(!rhs) return rhs;
         } else {
-            // Parse a full expression with the right binding power
-            rhs = parse_expression(right_binding_power);
+            // Otherwise, just grab the next LHS term (atom or parenthesized expression)
+            // This prevents issues with complex expressions
+            rhs = match_lhs(next());
             if(!rhs) return rhs;
         }
     }
@@ -217,19 +214,6 @@ dv::Parser::MaybeAST dv::Parser::match_absolute_bar(const dv::Token &token){
     if(!arg) return arg;
     if(!match(TokenType::ABSOLUTE_BAR)){
         return std::unexpected{std::format("Unexpected: {}; Expected '|'", peek())};
-    }
-    std::vector<std::unique_ptr<AST>> args;
-    args.emplace_back(std::move(arg.value()));
-    // Create an ABS function token
-    Token abs_token{TokenType::BUILTIN_FUNC_ABS, "abs"};
-    return std::make_unique<AST>(abs_token, std::move(args));
-}
-
-dv::Parser::MaybeAST dv::Parser::match_left_absolute_bar(const dv::Token &token){
-    auto arg = parse_expression(0);
-    if(!arg) return arg;
-    if(!match(TokenType::RIGHT_ABSOLUTE_BAR)){
-        return std::unexpected{std::format("Unexpected: {}; Expected right '|'", peek())};
     }
     std::vector<std::unique_ptr<AST>> args;
     args.emplace_back(std::move(arg.value()));
@@ -371,7 +355,10 @@ dv::Parser::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
         auto lhs = parse_expression(0);
         if(!lhs) return lhs;
         if(!match(TokenType::RIGHT_ABSOLUTE_BAR)) return std::unexpected{"Missing right absolute bar"};
-        return lhs;
+        std::vector<std::unique_ptr<AST>> args;
+        args.emplace_back(std::move(lhs.value()));
+        Token abs_token{TokenType::BUILTIN_FUNC_ABS, "abs"};
+        return std::make_unique<AST>(abs_token, std::move(args));
     }
     if(is_unary_prefix_op(token.type)) {
         // For unary prefix, we need to allow atoms, parentheses, or other prefix ops
@@ -405,7 +392,7 @@ dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power
         else if(op.type == TokenType::COMMA) break;
         else if(op.type == TokenType::ABSOLUTE_BAR) break;  // Don't implicit multiply with closing |
 
-        const bool is_implicit_multiplication = !is_binop(op.type) && can_implicit_multiply_left(lhs.value()->token);
+        const bool is_implicit_multiplication = !is_binop(op.type);
         if(is_implicit_multiplication) op = {TokenType::TIMES, "*"};
         
         const auto [ left_binding_power, right_binding_power ] = precedence(op.type);

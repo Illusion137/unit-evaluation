@@ -132,7 +132,7 @@ dv::Token dv::Lexer::get_indentifier_token(std::uint32_t max_length) noexcept{
 }
 dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
     advance();
-        if(remaining_length() >= 8) {
+    if(remaining_length() >= 8) {
         switch(strint(it, 8)) {
             case strint<"sin^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCSIN, 8);
             case strint<"cos^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCCOS, 8);

@@ -25,6 +25,7 @@ namespace dv {
         Token advance_with_token(const double token_value, const std::uint32_t count) noexcept;
         void devoure_whitespace() noexcept;
         std::int32_t collect_subscript(char *buffer, std::size_t size, std::uint8_t &write) noexcept;
+        std::int32_t collect_curly_brackets(char *buffer, std::size_t size, std::uint8_t &write) noexcept;
         Token consume_next_token() noexcept;
         Token get_numeric_literal_token() noexcept;
         Token get_indentifier_token(std::uint32_t max_length = UINT32_MAX) noexcept;

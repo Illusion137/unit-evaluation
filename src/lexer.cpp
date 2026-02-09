@@ -1,8 +1,10 @@
 #include "lexer.hpp"
+#include "token.hpp"
 #include <array>
 #include <cctype>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <expected>
 
 template <std::size_t N>
@@ -113,6 +115,23 @@ std::int32_t dv::Lexer::collect_subscript(char *buffer, std::size_t size, std::u
     return 1;
 }
 
+std::int32_t dv::Lexer::collect_curly_brackets(char *buffer, std::size_t size, std::uint8_t &write) noexcept{
+    if(peek() == '{') {
+        advance(1);
+        char c;
+        while((c = peek()) && c != '}' && write < size){
+            buffer[write++] = c;
+            advance();
+        }
+        if(peek() == '}'){
+            advance();
+        }
+        else return 0;
+    }
+    else return 0;
+    return 1;
+}
+
 dv::Token dv::Lexer::get_indentifier_token(std::uint32_t max_length) noexcept{
     const char *begit = it;
     std::array<char, 32> buffer;
@@ -196,6 +215,40 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"pi">(): return advance_with_token(M_PI, 2);
             case strint<"ln">(): return advance_with_token(TokenType::BUILTIN_FUNC_LN, 2);
             default: break;
+        }
+    }
+    if(remaining_length() >= 12){
+        const std::int32_t result = memcmp(it, "operatorname", sizeof(char) * 12);
+        if(result == 0){
+            advance(12);
+            std::array<char, 32> buffer;
+            std::uint8_t write = 0;
+            buffer.fill(0);
+            auto result = collect_curly_brackets(buffer.data(), buffer.size(), write);
+            if(!result) return {TokenType::UNKNOWN, "Bad Operator name result"};
+            if(write >= 5) {
+                switch(strint(buffer.data(), 5)) {
+                    case strint<"floor">(): return advance_with_token(TokenType::BUILTIN_FUNC_FLOOR, 0);
+                    case strint<"round">(): return advance_with_token(TokenType::BUILTIN_FUNC_ROUND, 0);
+                    default: break;
+                }
+            }
+            if(write >= 4) {
+                switch(*(std::uint32_t*)buffer.data()) {
+                    case strint<"ceil">(): return advance_with_token(TokenType::BUILTIN_FUNC_CEIL, 0);
+                    case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 0);
+                    default: break;
+                }
+            }
+            if(write >= 3) {
+                switch(strint(buffer.data(), 3)) {
+                    case strint<"abs">(): return advance_with_token(TokenType::BUILTIN_FUNC_ABS, 0);
+                    case strint<"nCr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NCR, 0);
+                    case strint<"nPr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NPR, 0);
+                    default: break;
+                }
+            }
+            return {TokenType::UNKNOWN, "Bad Operator name"};
         }
     }
     return get_indentifier_token();

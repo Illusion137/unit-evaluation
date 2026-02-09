@@ -10,6 +10,15 @@ struct LatexTest {
     const double expected_result;
 };
 
+static inline void print_tokens_red(const std::string_view view){
+    dv::Lexer lexer{view};
+    const auto &tokens = lexer.extract_all_tokens();
+    if(!tokens) return;
+    std::print("\033[31m");
+    std::println("{}", tokens.value());
+    std::print("\033[0m\n");
+}
+
 static inline void print_ast_red(const std::string_view view){
     dv::Lexer lexer{view};
     const auto &tokens = lexer.extract_all_tokens();
@@ -33,6 +42,7 @@ static inline bool run_non_related_tests(const std::span<const LatexTest> tests)
         const auto &value = eval[0];
         if(!value){
             success = false;
+            print_tokens_red(test.expression);
             std::println("\033[31m[FAIL] {} = ERROR({}) ✗\033[0m", test.expression, value.error());
             continue;
         }

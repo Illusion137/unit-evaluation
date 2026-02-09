@@ -47,6 +47,7 @@ dv::EValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             const dv::EValue rhs = std::get<AST::ASTExpression>(ast->data).rhs->evaluate(evalulator);
             return lhs * rhs;
         }
+        case TokenType::DIVIDE:
         case TokenType::FRACTION: {
             const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate(evalulator);
             const dv::EValue rhs = std::get<AST::ASTExpression>(ast->data).rhs->evaluate(evalulator);
@@ -57,7 +58,6 @@ dv::EValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             const dv::EValue rhs = std::get<AST::ASTExpression>(ast->data).rhs->evaluate(evalulator);
             return lhs ^ rhs;
         }
-        case TokenType::DIVIDE:
         case TokenType::FACTORIAL: {
             const dv::EValue lhs = std::get<AST::ASTExpression>(ast->data).lhs->evaluate(evalulator);
             return lhs.fact();
@@ -96,6 +96,7 @@ dv::EValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(special_value == nullptr) return dv::builtins::log(args[0]->evaluate(evalulator).value);
             else return dv::builtins::log(args[0]->evaluate(evalulator).value, special_value->evaluate(evalulator).value);
         }
+        case TokenType::ABSOLUTE_BAR:
         case TokenType::BUILTIN_FUNC_ABS: {
             const auto &args = std::get<AST::ASTCall>(ast->data).args;
             return dv::builtins::abs(args[0]->evaluate(evalulator));

@@ -1,0 +1,28 @@
+{
+    "name": "uniteval",
+    "version": "1.0.0",
+    "description": "Unit Latex Math Evaluation",
+    "keywords": [
+		"math",
+		"latex",
+		"unit",
+		"evaluation",
+		"evaluator",
+		"parser"
+    ],
+    "homepage": "https://github.com/Illusion137/unit-evaluation#readme",
+    "bugs": {
+      	"url": "https://github.com/Illusion137/unit-evaluation/issues"
+    },
+    "repository": {
+		"type": "git",
+		"url": "git+https://github.com/Illusion137/unit-evaluation.git"
+    },
+    "license": "ISC",
+    "author": "Sumi!",
+    "type": "commonjs",
+    "main": "index.js",
+    "scripts": {
+      	"test": "echo \"Error: no test specified\" && exit 1"
+    }
+}

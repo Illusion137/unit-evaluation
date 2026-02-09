@@ -1,6 +1,5 @@
 # emcmake cmake -B build-wasm -S .
 emcmake cmake -S . -B build-wasm
 cmake --build build-wasm
-# cd build
-# cmake --build .
-# ./DimensionalEvaluation
+mv build-wasm/UnitEval.js /Users/illusion/dev/diptych/public/wasm/UnitEval.js
+mv build-wasm/UnitEval.wasm /Users/illusion/dev/diptych/public/wasm/UnitEval.wasm

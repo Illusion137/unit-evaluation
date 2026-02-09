@@ -1,3 +1,3 @@
 cd build
 cmake --build .
-./DimensionalEvaluation
+./UnitEval

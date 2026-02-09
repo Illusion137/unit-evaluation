@@ -127,8 +127,10 @@ bool dv::Parser::is_unary_postfix_op(dv::TokenType type){
     }
 }
 
-bool dv::Parser::can_implicit_multiply_left(const AST& ast) {
-    return is_atom(ast.token.type);
+bool dv::Parser::can_implicit_multiply_left(const Token& token) {
+    // Prevent implicit multiplication after exponent operations
+    if (token.type == TokenType::EXPONENT) return false;
+    return is_atom(token.type);
 }
 
 dv::Parser::MaybeAST dv::Parser::split_single_numeric(){
@@ -188,7 +190,7 @@ dv::Parser::MaybeAST dv::Parser::match_exponent(std::int32_t right_binding_power
     const bool uses_brackets = match(TokenType::LEFT_CURLY_BRACKET);
     MaybeAST rhs = nullptr;
     if(uses_brackets){
-        rhs = parse_expression(right_binding_power);
+        rhs = parse_expression(0);
         if(!rhs) return rhs;
         if(uses_brackets && !match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{"Expected '}'"};
     }
@@ -199,6 +201,16 @@ dv::Parser::MaybeAST dv::Parser::match_exponent(std::int32_t right_binding_power
     return std::move(rhs.value());
 }
 
+dv::Parser::MaybeAST dv::Parser::match_absolute_bar(const dv::Token &token){
+    auto arg = parse_expression(0);
+    if(!arg) return arg;
+    if(!match(TokenType::ABSOLUTE_BAR)){
+        return std::unexpected{std::format("Unexpected: {}; Expected '|'", peek())};
+    }
+    std::vector<std::unique_ptr<AST>> args;
+    args.emplace_back(std::move(arg.value()));
+    return std::make_unique<AST>(token, std::move(args));
+}
 
 dv::Parser::MaybeAST dv::Parser::match_sqrt(const dv::Token &token){
     MaybeAST n = nullptr;
@@ -307,16 +319,17 @@ dv::Parser::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
 dv::Parser::MaybeAST dv::Parser::match_atom(const dv::Token &token){
     if(token.type == TokenType::NUMERIC_LITERAL) return std::make_unique<AST>(token);
     if(token.type == TokenType::FRACTION) return match_fraction(token);
+    if(token.type == TokenType::ABSOLUTE_BAR) return match_absolute_bar(token);
     if(is_builtin_function(token.type)) return match_builtin_function(token);
-    return nullptr;
+    return std::unexpected{"Unknown atom type"};
 }
 
 dv::Parser::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
     if(is_atom(token.type)){
-        auto lhs = match_atom(token).value();
+        auto lhs = match_atom(token);
+        if(!lhs) return lhs;
         if(is_unary_postfix_op(peek().type)){
-            if(!lhs) return lhs;
-            return std::make_unique<AST>(next(), std::move(lhs), nullptr);
+            return std::make_unique<AST>(next(), std::move(lhs.value()), nullptr);
         }
         else if(lhs != nullptr) return lhs;
     }
@@ -326,15 +339,14 @@ dv::Parser::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
         return lhs;
     }
     if(is_unary_prefix_op(token.type)) {
-        if(!(is_atom(peek().type) || is_unary_prefix_op(peek().type))) return std::unexpected{"Unary Minus can only be used on an atom or another prefix unary op"};
+        if(!(is_atom(peek().type) || peek().type == TokenType::LEFT_PAREN || is_unary_prefix_op(peek().type))) return std::unexpected{"Unary Minus can only be used on an atom or another prefix unary op"};
         auto lhs = match_lhs(next());
         if(!lhs) return lhs;
         return std::make_unique<AST>(token, std::move(lhs.value()), nullptr);
     }
-    return std::make_unique<AST>(token);
-    // TODO investigate return std::unexpected{"No valid LHS token found"};
+    return std::unexpected{"No valid LHS token found"};
 }
-// TODO postfix ops
+
 dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power) {
     auto lhs = match_lhs(next());
     if(!lhs) return lhs;
@@ -346,7 +358,7 @@ dv::Parser::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power
         else if(op.type == TokenType::RIGHT_CURLY_BRACKET) break;
         else if(op.type == TokenType::COMMA) break;
 
-        const bool is_implicit_multiplication = !is_binop(op.type) && peek_next().type != TokenType::TEOF;
+        const bool is_implicit_multiplication = !is_binop(op.type) && can_implicit_multiply_left(lhs.value()->token);
         if(is_implicit_multiplication) op = {TokenType::TIMES, "*"};
         
         const auto [ left_binding_power, right_binding_power ] = precedence(op.type);

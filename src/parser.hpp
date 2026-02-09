@@ -30,13 +30,14 @@ namespace dv {
         bool is_builtin_function(dv::TokenType type);
         bool is_unary_prefix_op(dv::TokenType type);
         bool is_unary_postfix_op(dv::TokenType type);
-        bool can_implicit_multiply_left(const AST& ast);
+        bool can_implicit_multiply_left(const Token& token);
         MaybeAST split_single_numeric();
         MaybeAST match_atom(const dv::Token &token);
         MaybeAST match_lhs(const dv::Token &token);
         MaybeAST match_square_bracket();
         MaybeAST match_curly_bracket();
         MaybeAST match_parentheses();
+        MaybeAST match_absolute_bar(const dv::Token &token);
         MaybeAST match_sqrt(const dv::Token &token);
         MaybeAST match_log(const dv::Token &token);
         MaybeAST match_builtin_function(const dv::Token &token);

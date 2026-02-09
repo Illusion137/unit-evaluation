@@ -4,6 +4,9 @@
 #include <expected>
 #include <numeric>
 #include <vector>
+#ifdef EVAL_PRINT_AST
+#include <print>
+#endif
 
 std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_list(const std::span<const std::string_view> expression_list){
     std::vector<dv::Parser::MaybeAST> parsed_expressions;
@@ -34,5 +37,11 @@ dv::Parser::MaybeAST dv::Evaluator::parse_expression(const std::string_view expr
         return std::unexpected{tokens.error()}; 
     }
     Parser parser{tokens.value()};
+#ifdef EVAL_PRINT_AST
+    auto p = parser.parse();
+    std::println("{}", *p.value());
+    return p;
+#else
     return parser.parse();
+#endif
 }

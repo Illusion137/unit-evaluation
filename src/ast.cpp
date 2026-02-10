@@ -28,7 +28,8 @@ dv::EValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             else if(evalulator.evaluated_variables.contains(token_id)){
                 return evalulator.evaluated_variables.at(token_id);
             }
-            return 0.0; // TODO spew errors here
+            return 0.0;
+            // throw std::runtime_error(std::format("Unknown identifier '{}'", token_id));
         }
         case TokenType::PLUS: {
             const auto &rhs = std::get<AST::ASTExpression>(ast->data).rhs;

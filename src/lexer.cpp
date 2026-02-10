@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "dimeval.hpp"
 #include "token.hpp"
 #include <array>
 #include <cctype>
@@ -67,7 +68,7 @@ dv::Token dv::Lexer::advance_with_token(const TokenType token_type, const std::u
     it += count;
     return {token_type, {it - count, count}};
 }
-dv::Token dv::Lexer::advance_with_token(const double token_value, const std::uint32_t count) noexcept {
+dv::Token dv::Lexer::advance_with_token(const EValue token_value, const std::uint32_t count) noexcept {
     it += count;
     return {token_value, {it - count, count}};
 }
@@ -207,6 +208,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"nCr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NCR, 3);
             case strint<"nPr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NPR, 3);
             case strint<"log">(): return advance_with_token(TokenType::BUILTIN_FUNC_LOG, 3);
+            case strint<"mol">(): return advance_with_token(dv::EValue{1.0, { 0, 0, 0, 0, 0, 1, 0 }}, 3);
             default: break;
         }
     }
@@ -214,6 +216,22 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
         switch(*(std::uint16_t*)it) {
             case strint<"pi">(): return advance_with_token(M_PI, 2);
             case strint<"ln">(): return advance_with_token(TokenType::BUILTIN_FUNC_LN, 2);
+            case strint<"kg">(): return advance_with_token(dv::EValue{1.0, { 0, 0, 1, 0, 0, 0, 0 }}, 2);
+            case strint<"cd">(): return advance_with_token(dv::EValue{1.0, { 0, 0, 0, 0, 0, 0, 1 }}, 2);
+            case strint<"Pa">(): return advance_with_token(dv::EValue{1.0, { -1, -2, 1, 0, 0, 0, 0 }}, 2);
+            case strint<"Hz">(): return advance_with_token(dv::EValue{1.0, { 0, -1, 0, 0, 0, 0, 0 }}, 2);
+            default: break;
+        }
+    }
+    if(remaining_length() >= 1){
+        switch(*(std::uint8_t*)it) {
+            case strint<"m">(): return advance_with_token(dv::EValue{1.0, { 1, 0, 0, 0, 0, 0, 0 }}, 1);
+            case strint<"s">(): return advance_with_token(dv::EValue{1.0, { 0, 1, 0, 0, 0, 0, 0 }}, 1);
+            case strint<"A">(): return advance_with_token(dv::EValue{1.0, { 0, 0, 0, 1, 0, 0, 0 }}, 1);
+            case strint<"K">(): return advance_with_token(dv::EValue{1.0, { 0, 0, 0, 0, 1, 0, 0 }}, 1);
+            case strint<"N">(): return advance_with_token(dv::EValue{1.0, { 1, -2, 1, 0, 0, 0, 0 }}, 1);
+            case strint<"J">(): return advance_with_token(dv::EValue{1.0, { 2, -2, 1, 0, 0, 0, 0 }}, 1);
+            case strint<"C">(): return advance_with_token(dv::EValue{1.0, { 0, 1, 0, 1, 0, 0, 0 }}, 1);
             default: break;
         }
     }

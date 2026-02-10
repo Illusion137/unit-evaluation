@@ -23,7 +23,7 @@ if(EMSCRIPTEN)
         -sENVIRONMENT=web
         -sALLOW_MEMORY_GROWTH=1
         -sFILESYSTEM=0
-        -sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','HEAPU32','HEAP32','HEAPF64','HEAPF32']
+        -sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAP8','HEAPU8','HEAPU32','HEAP32','HEAPF64','HEAPF32']
         -sEXPORTED_FUNCTIONS=['_malloc','_free']
     )
 

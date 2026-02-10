@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dimeval.hpp"
 #include "token.hpp"
 #include <expected>
 #include <vector>
@@ -22,7 +23,7 @@ namespace dv {
         void advance(const std::uint32_t count) noexcept;
         Token advance_with_token(const TokenType token_type) noexcept;
         Token advance_with_token(const TokenType token_type, const std::uint32_t count) noexcept;
-        Token advance_with_token(const double token_value, const std::uint32_t count) noexcept;
+        Token advance_with_token(const EValue token_value, const std::uint32_t count) noexcept;
         void devoure_whitespace() noexcept;
         std::int32_t collect_subscript(char *buffer, std::size_t size, std::uint8_t &write) noexcept;
         std::int32_t collect_curly_brackets(char *buffer, std::size_t size, std::uint8_t &write) noexcept;

@@ -158,20 +158,19 @@ int main(){
     };
     run_non_related_tests(ALL_TESTS);
 
-    // std::array<std::string_view, 5> expressions = {
-    //     "a = 10",
-    //     "2^2a",
-    //     "k\\frac{e_ce_c}{1.0}",
-    //     "5!",
-    //     "2^2",
-    // };
+    // const units = ["m", "kg", "s", "A", "K", "mol", "cd", "N", "J", "Pa", "C", "Hz"];
 
-    // dv::Evaluator evaluator{};
-    // const auto evaled = evaluator.evaluate_expression_list(expressions);
-    // for(const auto &eval : evaled){
-    //     if(!eval) std::println("[ERROR]: {}", eval.error());
-    //     else std::println("[VALUE]: {}", eval.value().value);
-    // }
+    std::array<std::string_view, 2> expressions = {
+        "a = \\left(10\\right)\\cdot\\kg\\cdot\\m\\cdot\\s^{-1}",
+        "a^2",
+    };
+
+    dv::Evaluator evaluator{};
+    const auto evaled = evaluator.evaluate_expression_list(expressions);
+    for(const auto &eval : evaled){
+        if(!eval) std::println("[ERROR]: {}", eval.error());
+        else std::println("[VALUE]: {} {}", eval.value().value, eval.value().unit.vec);
+    }
 
     // auto end = std::chrono::steady_clock::now();
     // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

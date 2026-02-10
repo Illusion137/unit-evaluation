@@ -5,6 +5,19 @@
 #include <cstring>
 
 namespace dv {
+    // m	meter	[ 1, 0, 0, 0, 0, 0, 0 ]
+    // kg	kilogram	[ 0, 0, 1, 0, 0, 0, 0 ]
+    // s	second	[ 0, 1, 0, 0, 0, 0, 0 ]
+    // A	ampere	[ 0, 0, 0, 1, 0, 0, 0 ]
+    // K	kelvin	[ 0, 0, 0, 0, 1, 0, 0 ]
+    // mol	mole	[ 0, 0, 0, 0, 0, 1, 0 ]
+    // cd	candela	[ 0, 0, 0, 0, 0, 0, 1 ]
+
+    // N	kg·m·s⁻²	[ 1, -2, 1, 0, 0, 0, 0 ]
+    // J	N·m = kg·m²·s⁻²	[ 2, -2, 1, 0, 0, 0, 0 ]
+    // Pa	N/m² = kg·m⁻¹·s⁻²	[ -1, -2, 1, 0, 0, 0, 0 ]
+    // C	A·s	[ 0, 1, 0, 1, 0, 0, 0 ]
+    // Hz	s⁻¹	[ 0, -1, 0, 0, 0, 0, 0 ]
     using UnitVec = std::array<std::int8_t, 7>;
     struct UnitDef {
         const char* name;
@@ -21,7 +34,7 @@ namespace dv {
         { "W",  {2,-3,1,0,0,0,0}, 1 },
         { "C",  {0,1,0,1,0,0,0}, 1 },
         { "V",  {2,-3,1,-1,0,0,0}, 1 },
-        { "Ω",{2,-3,1,-2,0,0,0}, 1 },
+        { "Ω",  {2,-3,1,-2,0,0,0}, 1 },
         { "T",  {0,-2,1,-1,0,0,0}, 1 },
         { "Wb", {2,-2,1,-1,0,0,0}, 1 },
     };
@@ -60,6 +73,7 @@ namespace dv {
         UnitVector operator*(const UnitVector &rhs) const noexcept;
         UnitVector operator/(const UnitVector &rhs) const noexcept;
         UnitVector operator^(const UnitVector &rhs) const noexcept;
+        UnitVector operator^(const double value) const noexcept;
     };
     struct EValue {
         long double value;

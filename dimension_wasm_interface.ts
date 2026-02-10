@@ -2,6 +2,7 @@
 export interface EvalResult {
     success: boolean;
     value?: number;
+    unit?: number[];
     error?: string;
 }
 
@@ -30,6 +31,7 @@ export interface WasmModule {
     HEAP32: Int32Array;
     HEAPU32: Uint32Array;
     HEAPU8: Uint8Array;
+    HEAP8: Uint8Array;
 }
 
 // dimensional_evaluator.ts
@@ -43,7 +45,7 @@ export class DimensionalEvaluator {
         this.module = wasm_module;
         this.text_encoder = new TextEncoder();
         this.text_decoder = new TextDecoder();
-        
+
         if (!this.module._dv_init()) {
             throw new Error('Failed to initialize evaluator');
         }
@@ -120,13 +122,14 @@ export class DimensionalEvaluator {
     /**
      * Evaluate a single expression
      * @param expression - The mathematical expression to evaluate
-     * @returns Result object with success flag, value, or error message
+     * @returns Result object with success flag, value, unit array, or error message
      * 
      * @example
      * ```typescript
      * const result = evaluator.eval('2 + 2');
      * if (result.success) {
      *     console.log(result.value); // 4
+     *     console.log(result.unit);  // Unit dimension array
      * } else {
      *     console.error(result.error);
      * }
@@ -136,24 +139,37 @@ export class DimensionalEvaluator {
         this._check_initialized();
         const expr_ptr = this._alloc_string(expression);
         const result_ptr = this.module._dv_eval(expr_ptr);
-        
-        // Read result struct: struct { double value; bool success; char error[256]; }
+
+        // Read result struct: struct { double value; int8_t unit[7]; bool success; char error[256]; }
+        // Layout:
+        // - value: 8 bytes (double) at offset 0
+        // - unit: 7 bytes (int8_t[7]) at offset 8
+        // - success: 1 byte (bool) at offset 15
+        // - error: 256 bytes (char[256]) at offset 16
+
         const value = this.module.HEAPF64[result_ptr / 8];
-        const success = this.module.HEAPU8[result_ptr + 8] !== 0;
-        const error_ptr = result_ptr + 9;
-        
+
+        // Read the unit array (7 int8_t values)
+        const unit: number[] = [];
+        for (let i = 0; i < 7; i++) {
+            unit.push(this.module.HEAP8[result_ptr + 8 + i]);
+        }
+
+        const success = this.module.HEAPU8[result_ptr + 15] !== 0;
+        const error_ptr = result_ptr + 16;
+
         let result: EvalResult;
         if (success) {
-            result = { success: true, value };
+            result = { success: true, value, unit };
         } else {
             const error_bytes = this.module.HEAPU8.subarray(error_ptr, error_ptr + 256);
             const null_index = error_bytes.indexOf(0);
             const error = this.text_decoder.decode(error_bytes.subarray(0, null_index));
             result = { success: false, error };
         }
-        
+
         this.module._dv_free(expr_ptr);
-        
+
         return result;
     }
 
@@ -178,18 +194,40 @@ export class DimensionalEvaluator {
      * });
      * ```
      */
+    /**
+     * Evaluate multiple expressions in a batch
+     * @param expressions - Array of mathematical expressions
+     * @returns Array of result objects
+     * 
+     * @example
+     * ```typescript
+     * const results = evaluator.eval_batch([
+     *     'x = 5!',
+     *     '2^2',
+     *     'x + 4'
+     * ]);
+     * results.forEach((r, i) => {
+     *     if (r.success) {
+     *         console.log(`Expression ${i}: ${r.value}`);
+     *         console.log(`Unit ${i}: ${r.unit}`);
+     *     } else {
+     *         console.error(`Expression ${i}: ${r.error}`);
+     *     }
+     * });
+     * ```
+     */
     eval_batch(expressions: string[]): EvalResult[] {
         this._check_initialized();
-        
+
         if (expressions.length === 0) {
             return [];
         }
-        
+
         // Allocate array of string pointers
         const ptr_size = 4; // Assuming 32-bit pointers in WASM
         const array_ptr = this.module._malloc(expressions.length * ptr_size);
         const string_ptrs: number[] = [];
-        
+
         try {
             // Allocate each string
             for (let i = 0; i < expressions.length; i++) {
@@ -197,38 +235,46 @@ export class DimensionalEvaluator {
                 string_ptrs.push(str_ptr);
                 this.module.HEAPU32[array_ptr / 4 + i] = str_ptr;
             }
-            
+
             // Call batch evaluation
             const batch_ptr = this.module._dv_eval_batch(array_ptr, expressions.length);
-            
+
             if (batch_ptr === 0) {
                 throw new Error('Batch evaluation failed');
             }
-            
+
             // Read batch result struct:
-            // struct { double* values; bool* successes; char** errors; int count; }
+            // struct { double* values; int8_t** units; bool* successes; char** errors; int count; }
             const values_ptr = this.module.HEAPU32[batch_ptr / 4];
-            const successes_ptr = this.module.HEAPU32[batch_ptr / 4 + 1];
-            const errors_ptr = this.module.HEAPU32[batch_ptr / 4 + 2];
-            const count = this.module.HEAP32[batch_ptr / 4 + 3];
-            
+            const units_ptr = this.module.HEAPU32[batch_ptr / 4 + 1];
+            const successes_ptr = this.module.HEAPU32[batch_ptr / 4 + 2];
+            const errors_ptr = this.module.HEAPU32[batch_ptr / 4 + 3];
+            const count = this.module.HEAP32[batch_ptr / 4 + 4];
+
             const results: EvalResult[] = [];
             for (let i = 0; i < count; i++) {
                 const value = this.module.HEAPF64[values_ptr / 8 + i];
                 const success = this.module.HEAPU8[successes_ptr + i] !== 0;
-                
+
+                // Read unit array for this expression
+                const unit_array_ptr = this.module.HEAPU32[units_ptr / 4 + i];
+                const unit: number[] = [];
+                for (let j = 0; j < 7; j++) {
+                    unit.push(this.module.HEAP8[unit_array_ptr + j]);
+                }
+
                 if (success) {
-                    results.push({ success: true, value });
+                    results.push({ success: true, value, unit });
                 } else {
                     const error_str_ptr = this.module.HEAPU32[errors_ptr / 4 + i];
                     const error = this._read_string(error_str_ptr);
                     results.push({ success: false, error });
                 }
             }
-            
+
             // Cleanup batch result
             this.module._dv_free_batch_result(batch_ptr);
-            
+
             return results;
         } finally {
             // Cleanup string allocations
@@ -236,6 +282,7 @@ export class DimensionalEvaluator {
             this.module._dv_free(array_ptr);
         }
     }
+
 
     // ========================================================================
     // Variables Management
@@ -257,14 +304,14 @@ export class DimensionalEvaluator {
         this._check_initialized();
         const name_ptr = this._alloc_string(name);
         const value_ptr = this.module._malloc(8); // double = 8 bytes
-        
+
         try {
             const success = this.module._dv_get_variable(name_ptr, value_ptr);
-            
+
             if (success) {
                 return this.module.HEAPF64[value_ptr / 8];
             }
-            
+
             return null;
         } finally {
             this.module._dv_free(name_ptr);
@@ -348,22 +395,23 @@ export class DimensionalEvaluator {
  */
 export function example_usage(module: WasmModule): void {
     const evaluator = new DimensionalEvaluator(module);
-    
+
     try {
         // Set some constants
         evaluator.set_constant('k', 8.99e9);
         evaluator.set_constant('e_c', 1.602e-19);
-        
+
         console.log(`Constants defined: ${evaluator.get_constant_count()}`);
-        
+
         // Evaluate single expression
         const result1 = evaluator.eval('k * e_c^2 / 1.0');
         if (result1.success) {
             console.log(`Result: ${result1.value}`);
+            console.log(`Unit: ${result1.unit}`);
         } else {
             console.error(`Error: ${result1.error}`);
         }
-        
+
         // Batch evaluation
         const batch_results = evaluator.eval_batch([
             'x = 5!',
@@ -371,7 +419,7 @@ export function example_usage(module: WasmModule): void {
             'x + y',
             'invalid expression $%^'
         ]);
-        
+
         batch_results.forEach((result, index) => {
             if (result.success) {
                 console.log(`Expression ${index}: ${result.value}`);
@@ -379,21 +427,21 @@ export function example_usage(module: WasmModule): void {
                 console.error(`Expression ${index}: ${result.error}`);
             }
         });
-        
+
         // Get variables
         const x = evaluator.get_variable('x');
         const y = evaluator.get_variable('y');
         console.log(`x = ${x}, y = ${y}`);
-        
+
         console.log(`Variables defined: ${evaluator.get_variable_count()}`);
-        
+
         // Clear and reset
         evaluator.clear_variables();
         console.log(`Variables after clear: ${evaluator.get_variable_count()}`);
-        
+
         evaluator.reset();
         console.log(`Constants after reset: ${evaluator.get_constant_count()}`);
-        
+
     } finally {
         // Always clean up
         evaluator.destroy();

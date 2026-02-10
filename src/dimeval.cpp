@@ -36,6 +36,12 @@ dv::UnitVector dv::UnitVector::operator^(const UnitVector &rhs) const noexcept {
     for (uint32_t i = 0; i < vec.size(); i++) temp_vec.vec[i] = this->vec[i] * rhs.vec[i];
     return temp_vec;
 }
+dv::UnitVector dv::UnitVector::operator^(const double value) const noexcept {
+    UnitVector temp_vec;
+    temp_vec.vec.fill(0);
+    for (uint32_t i = 0; i < vec.size(); i++) temp_vec.vec[i] = this->vec[i] * value;
+    return temp_vec;
+}
 
 dv::EValue dv::EValue::operator+() const noexcept {
     return { this->value, this->unit };
@@ -56,6 +62,7 @@ dv::EValue dv::EValue::operator/(const EValue &rhs) const noexcept {
     return { this->value / rhs.value, this->unit / rhs.unit };
 }
 dv::EValue dv::EValue::operator^(const EValue &rhs) const noexcept {
+    if(rhs.unit == DIMENSIONLESS_VEC)  return { std::pow(this->value, rhs.value), this->unit ^ rhs.value };
     return { std::pow(this->value, rhs.value), this->unit ^ rhs.unit };
 }
 dv::EValue dv::EValue::fact() const noexcept {

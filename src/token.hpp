@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dimeval.hpp"
 #include <string_view>
 #include <format>
 #include <vector>
@@ -58,9 +59,9 @@ namespace dv {
     struct Token {
         TokenType type;
         std::string_view text;
-        double value;
+        EValue value;
         Token(): type{TokenType::UNKNOWN}, text{""}, value{0} {}
-        Token(const double value, const std::string_view token_text): type{TokenType::NUMERIC_LITERAL}, text{token_text}, value{value} {}
+        Token(const EValue value, const std::string_view token_text): type{TokenType::NUMERIC_LITERAL}, text{token_text}, value{value} {}
         Token(const TokenType token_type, const std::string_view token_text): type{token_type}, text{token_text}, value{0} {}
         Token(const TokenType token_type, const double token_value, const std::string_view token_text): type{token_type}, text{token_text}, value{token_value} {}
         operator bool() const noexcept{ return type != TokenType::TEOF; }
@@ -90,8 +91,8 @@ struct std::formatter<dv::Token> : std::formatter<std::string> {
     }
 
     auto format(const dv::Token& token, std::format_context& ctx) const {
-        if(token.value != 0 || token.type == dv::TokenType::NUMERIC_LITERAL){
-            return std::format_to(ctx.out(), "[{}]: \"{}\" = {}", static_cast<std::int32_t>(token.type), token.text, token.value);
+        if(token.value.value != 0 || token.type == dv::TokenType::NUMERIC_LITERAL){
+            return std::format_to(ctx.out(), "[{}]: \"{}\" = {}", static_cast<std::int32_t>(token.type), token.text, token.value.value);
         }
         return std::format_to(ctx.out(), "[{}]: \"{}\"", static_cast<std::int32_t>(token.type), token.text);
     }

@@ -9,6 +9,7 @@
 #endif
 
 std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_list(const std::span<const std::string_view> expression_list){
+    evaluated_variables.clear();
     std::vector<dv::Parser::MaybeAST> parsed_expressions;
     parsed_expressions.reserve(expression_list.size());
     for(const auto &expression : expression_list){
@@ -24,7 +25,11 @@ std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_li
             evaluated[evaluation_index] = std::unexpected{parsed_expressions[evaluation_index].error()};
             continue;
         }
-        evaluated[evaluation_index] = parsed_expressions[evaluation_index].value()->evaluate(*this);
+        try {
+            evaluated[evaluation_index] = parsed_expressions[evaluation_index].value()->evaluate(*this);
+        } catch (const std::runtime_error& e) {
+            evaluated[evaluation_index] = std::unexpected{e.what()};
+        }
     }
     
     return evaluated;

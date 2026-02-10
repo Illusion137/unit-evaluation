@@ -1,5 +1,6 @@
 #include "evaluator.hpp"
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <string>
 
@@ -71,13 +72,14 @@ int dv_get_constant_count() {
 
 struct dv_result {
     double value;
+    int8_t unit[7];
     bool success;
     char error[256];
 };
 
 WASM_EXPORT
 dv_result dv_eval(const char* expr) {
-    dv_result result = {0.0, false, ""};
+    dv_result result = {0.0, { 0 }, false, ""};
     
     if (!g_eval) {
         strncpy(result.error, "Evaluator not initialized", sizeof(result.error) - 1);
@@ -94,6 +96,7 @@ dv_result dv_eval(const char* expr) {
     
     if (results[0]) {
         result.value = results[0].value().value;
+        memcpy(result.unit, results[0].value().unit.vec.data(), 7 * sizeof(int8_t));
         result.success = true;
     } else {
         strncpy(result.error, results[0].error().c_str(), sizeof(result.error) - 1);
@@ -109,6 +112,7 @@ dv_result dv_eval(const char* expr) {
 
 struct dv_batch_result {
     double* values;      // Array of results
+    int8_t** units;      // Array of units
     bool* successes;     // Array of success flags
     char** errors;       // Array of error messages (NULL if success)
     int count;
@@ -122,6 +126,10 @@ dv_batch_result* dv_eval_batch(const char** exprs, int count) {
     auto* batch = (dv_batch_result*)malloc(sizeof(dv_batch_result));
     batch->count = count;
     batch->values = (double*)malloc(sizeof(double) * count);
+    batch->units = (int8_t**)malloc(sizeof(int8_t*) * count);
+    for(int32_t i = 0; i < count; i++){
+        batch->units[i] = (int8_t*)malloc(sizeof(int8_t) * 7);
+    }
     batch->successes = (bool*)malloc(sizeof(bool) * count);
     batch->errors = (char**)malloc(sizeof(char*) * count);
     
@@ -139,9 +147,12 @@ dv_batch_result* dv_eval_batch(const char** exprs, int count) {
     for (int i = 0; i < count; ++i) {
         if (results[i]) {
             batch->values[i] = results[i].value().value;
+            memcpy(batch->units[i], results[i].value().unit.vec.data(), 7 * sizeof(int8_t));
             batch->successes[i] = true;
             batch->errors[i] = nullptr;
         } else {
+            batch->values[i] = std::nan("");
+            memset(batch->units[i], 0, 7 * sizeof(int8_t));
             batch->values[i] = std::nan("");
             batch->successes[i] = false;
             
@@ -160,6 +171,10 @@ void dv_free_batch_result(dv_batch_result* batch) {
     if (!batch) return;
     
     free(batch->values);
+    for(int32_t i = 0; i < batch->count; i++){
+        free(batch->units[i]);
+    }
+    free(batch->units);
     free(batch->successes);
     
     // Free individual error strings

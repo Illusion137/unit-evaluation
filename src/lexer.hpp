@@ -30,6 +30,7 @@ namespace dv {
         Token consume_next_token() noexcept;
         Token get_numeric_literal_token() noexcept;
         Token get_indentifier_token(std::uint32_t max_length = UINT32_MAX) noexcept;
+        Token get_unit_token() noexcept;
         Token get_special_indentifier_token() noexcept;
     };
 }

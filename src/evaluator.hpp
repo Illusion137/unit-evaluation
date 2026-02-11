@@ -13,6 +13,7 @@ namespace dv {
         using MaybeAST = std::expected<std::unique_ptr<AST>, std::string>;
         using MaybeEvaluated = std::expected<EValue, std::string>;
         std::vector<MaybeEvaluated> evaluate_expression_list(const std::span<const std::string_view> expression_list); 
+        void insert_constant(const std::string_view name, const std::string_view expression, const std::string_view unit_expression);
         std::unordered_map<std::string, EValue> fixed_constants;
         std::unordered_map<std::string, EValue> evaluated_variables;
     private:

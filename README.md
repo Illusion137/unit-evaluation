@@ -457,36 +457,3 @@ git checkout -b feature/your-feature-name
 git commit -m "Add your feature"
 git push origin feature/your-feature-name
 ```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Inspired by computational physics and engineering needs
-- Built with modern C++17 features
-- Powered by Emscripten for WebAssembly compilation
-
-## Support
-
-- 📧 Email: support@dimensional-evaluation.dev
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/dimensional-evaluation/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/dimensional-evaluation/discussions)
-- 📖 Documentation: [Full Docs](https://dimensional-evaluation.dev/docs)
-
-## Citation
-
-If you use this library in your research, please cite:
-```bibtex
-@software{dimensional_evaluation,
-  author = {Your Name},
-  title = {Dimensional-Evaluation: A Library for Mathematical Expression Parsing with Unit Analysis},
-  year = {2024},
-  url = {https://github.com/yourusername/dimensional-evaluation}
-}
-```
-
----
-
-Made with ❤️ by the Dimensional-Evaluation Team

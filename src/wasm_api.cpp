@@ -44,9 +44,9 @@ bool dv_is_initialized() {
 // ============================================================================
 
 WASM_EXPORT
-bool dv_set_constant(const char* name, double value) {
+bool dv_set_constant(const char* name, const char* expression, const char* unit_expression) {
     if (!g_eval || !name) return false;
-    g_eval->fixed_constants.insert_or_assign(name, EValue{value});
+    g_eval->insert_constant(name, expression, unit_expression);
     return true;
 }
 

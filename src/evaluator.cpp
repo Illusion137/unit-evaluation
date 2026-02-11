@@ -1,4 +1,5 @@
 #include "evaluator.hpp"
+#include "dimeval.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include <expected>
@@ -33,6 +34,14 @@ std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_li
     }
     
     return evaluated;
+}
+
+void dv::Evaluator::insert_constant(const std::string_view name, const std::string_view expression, const std::string_view unit_expression){
+    auto parsed_expression = parse_expression(expression);
+    auto parsed_unit_expression = parse_expression(unit_expression);
+    if(!parsed_expression || !parsed_unit_expression) return;
+    EValue value = {parsed_expression.value()->evaluate(*this).value, parsed_unit_expression.value()->evaluate(*this).unit};
+    fixed_constants.insert_or_assign(std::string{name}, std::move(value));
 }
 
 dv::Parser::MaybeAST dv::Evaluator::parse_expression(const std::string_view expression){

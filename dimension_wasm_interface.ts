@@ -14,7 +14,7 @@ export interface WasmModule {
     _dv_init(): boolean;
     _dv_destroy(): void;
     _dv_is_initialized(): boolean;
-    _dv_set_constant(name_ptr: number, value: number): boolean;
+    _dv_set_constant(name_ptr: number, expression_ptr: number, unit_expression_ptr: number): boolean;
     _dv_remove_constant(name_ptr: number): boolean;
     _dv_clear_constants(): void;
     _dv_get_constant_count(): number;
@@ -78,11 +78,15 @@ export class DimensionalEvaluator {
      * @param value - The numeric value
      * @returns true if successful
      */
-    set_constant(name: string, value: number): boolean {
+    set_constant(name: string, expression: string, unit_expression: string): boolean {
         this._check_initialized();
         const name_ptr = this._alloc_string(name);
-        const result = this.module._dv_set_constant(name_ptr, value);
+        const expression_ptr = this._alloc_string(expression);
+        const unit_expression_ptr = this._alloc_string(unit_expression);
+        const result = this.module._dv_set_constant(name_ptr, expression_ptr, unit_expression_ptr);
         this.module._dv_free(name_ptr);
+        this.module._dv_free(expression_ptr);
+        this.module._dv_free(unit_expression_ptr);
         return result;
     }
 
@@ -398,8 +402,8 @@ export function example_usage(module: WasmModule): void {
 
     try {
         // Set some constants
-        evaluator.set_constant('k', 8.99e9);
-        evaluator.set_constant('e_c', 1.602e-19);
+        // evaluator.set_constant('k', 8.99e9);
+        // evaluator.set_constant('e_c', 1.602e-19);
 
         console.log(`Constants defined: ${evaluator.get_constant_count()}`);
 

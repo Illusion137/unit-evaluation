@@ -4,6 +4,27 @@
 #include <cstdint>
 #include <cstring>
 
+#define DIM_METER    { 1, 0, 0, 0, 0, 0, 0 }
+#define DIM_KILOGRAM { 0, 0, 1, 0, 0, 0, 0 }
+#define DIM_SECOND   { 0, 1, 0, 0, 0, 0, 0 }
+#define DIM_AMPERE   { 0, 0, 0, 1, 0, 0, 0 }
+#define DIM_KELVIN   { 0, 0, 0, 0, 1, 0, 0 }
+#define DIM_MOLE     { 0, 0, 0, 0, 0, 1, 0 }
+#define DIM_CANDELA  { 0, 0, 0, 0, 0, 0, 1 }
+#define DIM_NEWTON   { 1, -2, 1, 0, 0, 0, 0 }
+#define DIM_JOULE    { 2, -2, 1, 0, 0, 0, 0 }
+#define DIM_PASCAL   { -1, -2, 1, 0, 0, 0, 0 }
+#define DIM_COULOMB  { 0, 1, 0, 1, 0, 0, 0 }
+#define DIM_HERTZ    { 0, -1, 0, 0, 0, 0, 0 }
+
+#define DIM_SIEMENS  { -2, 3, -1, 2, 0, 0, 0 }
+#define DIM_OHM      { 2, -3, 1, -2, 0, 0, 0 }
+#define DIM_FARAD    { -2, 4, -1, 2, 0, 0, 0 }
+#define DIM_VOLT     { 2, -3, 1, -1, 0, 0, 0 }
+#define DIM_WATT     { 2, -3, 1, 0, 0, 0, 0 }
+
+
+
 namespace dv {
     // m	meter	[ 1, 0, 0, 0, 0, 0, 0 ]
     // kg	kilogram	[ 0, 0, 1, 0, 0, 0, 0 ]

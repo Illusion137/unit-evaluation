@@ -113,7 +113,7 @@ dv::EValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
         case TokenType::BUILTIN_FUNC_SQRT: {
             const auto &args = std::get<AST::ASTCall>(ast->data).args;
             const auto &special_value = std::get<AST::ASTCall>(ast->data).special_value;
-            if(special_value == nullptr) return dv::builtins::nthsqrt(args[0]->evaluate(evalulator).value, 2.0);
+            if(special_value == nullptr) return dv::builtins::nthsqrt(args[0]->evaluate(evalulator), 2.0);
             else return dv::builtins::nthsqrt(args[0]->evaluate(evalulator), special_value->evaluate(evalulator).value);
         }
         case TokenType::BUILTIN_FUNC_CEIL: {

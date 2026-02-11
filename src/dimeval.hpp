@@ -23,8 +23,6 @@
 #define DIM_VOLT     { 2, -3, 1, -1, 0, 0, 0 }
 #define DIM_WATT     { 2, -3, 1, 0, 0, 0, 0 }
 
-
-
 namespace dv {
     // m	meter	[ 1, 0, 0, 0, 0, 0, 0 ]
     // kg	kilogram	[ 0, 0, 1, 0, 0, 0, 0 ]

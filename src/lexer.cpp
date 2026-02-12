@@ -193,7 +193,6 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 4);
             case strint<"frac">(): return advance_with_token(TokenType::FRACTION, 4);
             case strint<"cdot">(): return advance_with_token(TokenType::TIMES, 4);
-            case strint<"unit">(): return advance_with_token(TokenType::BUILTIN_FUNC_UNIT, 4);
             default: break;
         }
     }
@@ -209,7 +208,6 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"nCr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NCR, 3);
             case strint<"nPr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NPR, 3);
             case strint<"log">(): return advance_with_token(TokenType::BUILTIN_FUNC_LOG, 3);
-            case strint<"val">(): return advance_with_token(TokenType::BUILTIN_FUNC_VALUE, 3);
             default: break;
         }
     }
@@ -240,6 +238,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
                 switch(*(std::uint32_t*)buffer.data()) {
                     case strint<"ceil">(): return advance_with_token(TokenType::BUILTIN_FUNC_CEIL, 0);
                     case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 0);
+                    case strint<"unit">(): return advance_with_token(TokenType::BUILTIN_FUNC_UNIT, 4);
                     default: break;
                 }
             }
@@ -248,6 +247,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
                     case strint<"abs">(): return advance_with_token(TokenType::BUILTIN_FUNC_ABS, 0);
                     case strint<"nCr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NCR, 0);
                     case strint<"nPr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NPR, 0);
+                    case strint<"val">(): return advance_with_token(TokenType::BUILTIN_FUNC_VALUE, 3);
                     default: break;
                 }
             }

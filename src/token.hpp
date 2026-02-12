@@ -54,6 +54,8 @@ namespace dv {
         BUILTIN_FUNC_ARCSEC,
         BUILTIN_FUNC_ARCCSC,
         BUILTIN_FUNC_ARCCOT,
+        BUILTIN_FUNC_UNIT,
+        BUILTIN_FUNC_VALUE,
     };
     
     struct Token {

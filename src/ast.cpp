@@ -156,6 +156,14 @@ dv::EValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             const auto &args = std::get<AST::ASTCall>(ast->data).args;
             return dv::builtins::arccot(args[0]->evaluate(evalulator).value);
         }
+        case TokenType::BUILTIN_FUNC_VALUE: {
+            const auto &args = std::get<AST::ASTCall>(ast->data).args;
+            return args[0]->evaluate(evalulator).value;
+        }
+        case TokenType::BUILTIN_FUNC_UNIT: {
+            const auto &args = std::get<AST::ASTCall>(ast->data).args;
+            return {1.0, args[0]->evaluate(evalulator).unit};
+        }
         default: break;
     }
     return 0.0;

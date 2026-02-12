@@ -35,6 +35,8 @@ std::int32_t dv::Parser::builtin_function_args(dv::TokenType type){
         case dv::TokenType::BUILTIN_FUNC_ARCSEC: return 1;
         case dv::TokenType::BUILTIN_FUNC_ARCCSC: return 1;
         case dv::TokenType::BUILTIN_FUNC_ARCCOT: return 1;
+        case dv::TokenType::BUILTIN_FUNC_VALUE: return 1;
+        case dv::TokenType::BUILTIN_FUNC_UNIT: return 1;
         default: return 0;
     }
 }
@@ -105,6 +107,8 @@ bool dv::Parser::is_builtin_function(dv::TokenType type){
         case dv::TokenType::BUILTIN_FUNC_ARCSEC:
         case dv::TokenType::BUILTIN_FUNC_ARCCSC:
         case dv::TokenType::BUILTIN_FUNC_ARCCOT:
+        case dv::TokenType::BUILTIN_FUNC_VALUE:
+        case dv::TokenType::BUILTIN_FUNC_UNIT:
             return true;
         default: return false;
     }

@@ -518,6 +518,12 @@ dv::Token dv::Lexer::get_unit_token() noexcept {
         UNIT_CASE("EF", 1e+18, DIM_FARAD);
         UNIT_CASE("EV", 1e+18, DIM_VOLT);
         UNIT_CASE("EW", 1e+18, DIM_WATT);
+
+        UNIT_CASE("in", 0.0254, DIM_METER);
+        UNIT_CASE("ft", 0.3048, DIM_METER);
+        UNIT_CASE("yd", 0.9144, DIM_METER);
+        UNIT_CASE("mi", 1609.34, DIM_METER);
+        UNIT_CASE("lb", 0.453, DIM_KILOGRAM);
     } UNIT_CASE_LIST_END()
     UNIT_CASE_LIST_BEGIN(1) {
         UNIT_CASE("m", 1, DIM_METER);

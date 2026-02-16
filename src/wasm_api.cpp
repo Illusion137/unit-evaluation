@@ -71,7 +71,7 @@ int dv_get_constant_count() {
 // ============================================================================
 
 struct dv_result {
-    double value;
+    long double value;
     int8_t unit[7];
     bool success;
     char error[256];
@@ -111,7 +111,7 @@ dv_result dv_eval(const char* expr) {
 // ============================================================================
 
 struct dv_batch_result {
-    double* values;      // Array of results
+    long double* values;      // Array of results
     int8_t** units;      // Array of units
     bool* successes;     // Array of success flags
     char** errors;       // Array of error messages (NULL if success)
@@ -125,7 +125,7 @@ dv_batch_result* dv_eval_batch(const char** exprs, int count) {
     // Allocate result structure
     auto* batch = (dv_batch_result*)malloc(sizeof(dv_batch_result));
     batch->count = count;
-    batch->values = (double*)malloc(sizeof(double) * count);
+    batch->values = (long double*)malloc(sizeof(long double) * count);
     batch->units = (int8_t**)malloc(sizeof(int8_t*) * count);
     for(int32_t i = 0; i < count; i++){
         batch->units[i] = (int8_t*)malloc(sizeof(int8_t) * 7);
@@ -191,7 +191,7 @@ void dv_free_batch_result(dv_batch_result* batch) {
 // ============================================================================
 
 WASM_EXPORT
-bool dv_get_variable(const char* name, double* out_value) {
+bool dv_get_variable(const char* name, long double* out_value) {
     if (!g_eval || !name || !out_value) return false;
     
     auto it = g_eval->evaluated_variables.find(name);

@@ -1,92 +1,81 @@
 #include "dimeval.hpp"
 #include "formulas/physics_formulas.hpp"
 #include <vector>
-#include <string>
-#include <map>
-#include <set>
-#include <algorithm>
 
 const auto formula_database = Physics::FormulaDatabase{};
 
 class FormulaSearcher {
 private:
     const Physics::FormulaDatabase& db;
-    
-    // Convert UnitVec to std::array for comparison
-    std::array<int, 7> toArray(const dv::UnitVec& vec) const {
-        return {vec[0], vec[1], vec[2], vec[3], vec[4], vec[5], vec[6]};
-    }
-    
 public:
     FormulaSearcher() : db(formula_database) {}
     FormulaSearcher(const Physics::FormulaDatabase& database) : db(database) {}
     
     // Search by available variables and their units
-    std::vector<Physics::Formula> find_formulas(
-        const std::map<std::string, dv::EValue>& availableVars,
-        const std::string& solveFor = ""
-    ) const {
-        std::vector<Physics::Formula> matches;
+    // std::vector<Physics::Formula> find_formulas(
+    //     const std::map<std::string, dv::EValue>& availableVars,
+    //     const std::string& solveFor = ""
+    // ) const {
+    //     std::vector<Physics::Formula> matches;
         
-        for (const auto& formula : db.get_formulas()) {
-            // If we want to solve for a specific variable, check if this formula does
-            if (!solveFor.empty() && formula.solve_for != solveFor) {
-                continue;
-            }
+    //     for (const auto& formula : db.get_formulas()) {
+    //         // If we want to solve for a specific variable, check if this formula does
+    //         if (!solveFor.empty() && formula.solve_for != solveFor) {
+    //             continue;
+    //         }
             
-            // Check if we have all required non-constant variables
-            bool hasAllVars = true;
-            std::multiset<std::array<int, 7>> requiredUnits;
-            std::multiset<std::array<int, 7>> availableUnits;
+    //         // Check if we have all required non-constant variables
+    //         bool hasAllVars = true;
+    //         std::multiset<dv::UnitVector> requiredUnits;
+    //         std::multiset<dv::UnitVector> availableUnits;
             
-            for (const auto& var : formula.variables) {
-                // Skip constants
-                if (var.is_constant) continue;
+    //         for (const auto& var : formula.variables) {
+    //             // Skip constants
+    //             if (var.is_constant) continue;
                 
-                // Skip the variable we're solving for
-                if (var.name == formula.solve_for) continue;
+    //             // Skip the variable we're solving for
+    //             if (var.name == formula.solve_for) continue;
                 
-                // Check if we have this variable (by unit matching)
-                bool found = false;
-                for (const auto& [name, evalue] : availableVars) {
-                    if (toArray(evalue.unit.vec) == var.units) {
-                        found = true;
-                        break;
-                    }
-                }
+    //             // Check if we have this variable (by unit matching)
+    //             bool found = false;
+    //             for (const auto& [name, evalue] : availableVars) {
+    //                 if (evalue.unit.vec == var.units) {
+    //                     found = true;
+    //                     break;
+    //                 }
+    //             }
                 
-                if (!found) {
-                    hasAllVars = false;
-                    break;
-                }
+    //             if (!found) {
+    //                 hasAllVars = false;
+    //                 break;
+    //             }
                 
-                requiredUnits.insert(var.units);
-            }
+    //             requiredUnits.insert(var.units);
+    //         }
             
-            // Also verify unit counts match (for formulas with repeated variables)
-            if (hasAllVars) {
-                for (const auto& [name, evalue] : availableVars) {
-                    availableUnits.insert(toArray(evalue.unit.vec));
-                }
+    //         // Also verify unit counts match (for formulas with repeated variables)
+    //         if (hasAllVars) {
+    //             for (const auto& [name, evalue] : availableVars) {
+    //                 availableUnits.insert(evalue.unit);
+    //             }
                 
-                if (requiredUnits == availableUnits || requiredUnits.size() <= availableUnits.size()) {
-                    matches.push_back(formula);
-                }
-            }
-        }
+    //             if (requiredUnits == availableUnits || requiredUnits.size() <= availableUnits.size()) {
+    //                 matches.push_back(formula);
+    //             }
+    //         }
+    //     }
         
-        return matches;
-    }
+    //     return matches;
+    // }
     
     // Search by unit signature (find what you can calculate)
     std::vector<Physics::Formula> find_by_units(
-        const std::vector<dv::UnitVector>& availableUnits,
+        const std::vector<dv::UnitVector>& available_units,
         const dv::UnitVector& targetUnit
     ) const {
         std::vector<Physics::Formula> matches;
         
-        for (const auto& formula : db.get_formulas()) {
-            // Find the variable we're solving for
+        for (const auto &formula : db.get_formulas()) {
             auto solveForVar = std::find_if(
                 formula.variables.begin(),
                 formula.variables.end(),
@@ -96,7 +85,7 @@ public:
             if (solveForVar == formula.variables.end()) continue;
             
             // Check if output unit matches target
-            if (toArray(targetUnit.vec) != solveForVar->units) continue;
+            if (targetUnit.vec != solveForVar->units) continue;
             
             // Check if we have all input units
             bool hasAllUnits = true;
@@ -105,8 +94,8 @@ public:
                 if (var.name == formula.solve_for) continue;
                 
                 bool found = false;
-                for (const auto& unit : availableUnits) {
-                    if (toArray(unit.vec) == var.units) {
+                for (const auto& unit : available_units) {
+                    if (unit.vec == var.units) {
                         found = true;
                         break;
                     }
@@ -127,52 +116,52 @@ public:
     }
     
     // Search by category
-    std::vector<Physics::Formula> find_by_category(const std::string& category) const {
-        std::vector<Physics::Formula> matches;
+    // std::vector<Physics::Formula> find_by_category(const std::string& category) const {
+    //     std::vector<Physics::Formula> matches;
         
-        for (const auto& formula : db.get_formulas()) {
-            if (formula.category == category) {
-                matches.push_back(formula);
-            }
-        }
+    //     for (const auto& formula : db.get_formulas()) {
+    //         if (formula.category == category) {
+    //             matches.push_back(formula);
+    //         }
+    //     }
         
-        return matches;
-    }
+    //     return matches;
+    // }
     
-    // Find what you can solve for given specific variables
-    std::set<std::string> find_possible_outputs(
-        const std::map<std::string, dv::EValue>& availableVars
-    ) const {
-        std::set<std::string> outputs;
+    // // Find what you can solve for given specific variables
+    // std::set<std::string> find_possible_outputs(
+    //     const std::map<std::string, dv::EValue>& availableVars
+    // ) const {
+    //     std::set<std::string> outputs;
         
-        for (const auto& formula : db.get_formulas()) {
-            bool canUse = true;
+    //     for (const auto& formula : db.get_formulas()) {
+    //         bool canUse = true;
             
-            for (const auto& var : formula.variables) {
-                if (var.is_constant) continue;
-                if (var.name == formula.solve_for) continue;
+    //         for (const auto& var : formula.variables) {
+    //             if (var.is_constant) continue;
+    //             if (var.name == formula.solve_for) continue;
                 
-                bool found = false;
-                for (const auto& [name, evalue] : availableVars) {
-                    if (toArray(evalue.unit.vec) == var.units) {
-                        found = true;
-                        break;
-                    }
-                }
+    //             bool found = false;
+    //             for (const auto& [name, evalue] : availableVars) {
+    //                 if (evalue.unit.vec == var.units) {
+    //                     found = true;
+    //                     break;
+    //                 }
+    //             }
                 
-                if (!found) {
-                    canUse = false;
-                    break;
-                }
-            }
+    //             if (!found) {
+    //                 canUse = false;
+    //                 break;
+    //             }
+    //         }
             
-            if (canUse) {
-                outputs.insert(formula.solve_for);
-            }
-        }
+    //         if (canUse) {
+    //             outputs.insert(formula.solve_for);
+    //         }
+    //     }
         
-        return outputs;
-    }
+    //     return outputs;
+    // }
 };
 
 // Usage Example

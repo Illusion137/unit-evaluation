@@ -3,13 +3,13 @@
 
 #include <string>
 #include <vector>
-#include <array>
+#include "../dimeval.hpp"
 
 namespace Physics {
 
 struct Variable {
     std::string name;                    // "F", "q_1", "r", etc.
-    std::array<int, 7> units;           // [m, s, kg, A, K, mol, cd]
+    dv::UnitVector units;           // [m, s, kg, A, K, mol, cd]
     std::string description;             // "Force", "Charge 1", "Distance"
     bool is_constant;                    // true for k, G, epsilon_0, etc.
 };

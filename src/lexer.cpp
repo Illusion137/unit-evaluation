@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <expected>
-#include <print>
 
 template <std::size_t N>
 struct LiteralString {
@@ -37,7 +36,7 @@ constexpr bool isnumeric(char c){
     return std::isdigit(c) || c == '.';
 }
 
-dv::Lexer::Lexer(const std::string view) noexcept{
+dv::Lexer::Lexer(const std::string_view view) noexcept{
     begin = view.data();
     it = begin;
     length = view.size();
@@ -46,9 +45,7 @@ dv::Lexer::MaybeTokens dv::Lexer::extract_all_tokens() noexcept{
     std::vector<Token> tokens;
     tokens.reserve(length / 2);
     Token token;
-    std::println("START:");
     while((token = consume_next_token()).type != TokenType::TEOF){
-        std::println("{}", token);
         if(token.has_error()) {
             return std::unexpected{token.get_error_message()};
         }
@@ -190,7 +187,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
         }
     }
     if(remaining_length() >= 4) {
-        switch(strint(it, 4)) {
+        switch(*(std::uint32_t*)it) {
             case strint<"sqrt">(): return advance_with_token(TokenType::BUILTIN_FUNC_SQRT, 4);
             case strint<"ceil">(): return advance_with_token(TokenType::BUILTIN_FUNC_CEIL, 4);
             case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 4);
@@ -215,7 +212,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
         }
     }
     if(remaining_length() >= 2) {
-        switch(strint(it, 2)) {
+        switch(*(std::uint16_t*)it) {
             case strint<"pi">(): return advance_with_token(M_PI, 2);
             case strint<"ln">(): return advance_with_token(TokenType::BUILTIN_FUNC_LN, 2);
             default: break;
@@ -238,7 +235,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
                 }
             }
             if(write >= 4) {
-                switch(strint(buffer.data(), 4)) {
+                switch(*(std::uint32_t*)buffer.data()) {
                     case strint<"ceil">(): return advance_with_token(TokenType::BUILTIN_FUNC_CEIL, 0);
                     case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 0);
                     case strint<"unit">(): return advance_with_token(TokenType::BUILTIN_FUNC_UNIT, 0);

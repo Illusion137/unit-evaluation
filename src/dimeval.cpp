@@ -2,10 +2,10 @@
 #include <cmath>
 
 bool dv::UnitVector::operator==(const UnitVector &rhs) const noexcept {
-    return vec == rhs.vec;
+    return this->vec == rhs;
 }
 bool dv::UnitVector::operator==(const UnitVec &rhs) const noexcept {
-    return vec == rhs;
+    return this->vec == rhs;
 }
 dv::UnitVector dv::UnitVector::operator+(const UnitVector &rhs) const noexcept {
     UnitVector temp_vec = *this;

@@ -2,6 +2,7 @@
 
 #include "dimeval.hpp"
 #include "formula_finder.hpp"
+#include <map>
 #include <expected>
 #include <span>
 #include <unordered_map>
@@ -18,8 +19,7 @@ namespace dv {
     };
     struct AssignExpression: public Expression {
         std::string identifier;
-        std::string value_expr;
-        std::string unit_expr;
+        AssignExpression(std::string _identifier, std::string _value_expr, std::string _unit_expr): Expression{_value_expr, _unit_expr}, identifier{_identifier} {}
     };
     class Evaluator {
         public:
@@ -28,6 +28,7 @@ namespace dv {
         Evaluator();
         Evaluator(const std::span<const AssignExpression> const_expressions);
 
+        MaybeEvaluated evaluate_expression(const Expression &expression); 
         std::vector<MaybeEvaluated> evaluate_expression_list(const std::span<const Expression> expression_list); 
         void insert_constant(const std::string name, const Expression &expression);
         std::vector<Physics::Formula> get_available_formulas(const dv::UnitVector &target) const noexcept;
@@ -37,7 +38,7 @@ namespace dv {
         std::vector<Physics::Formula> last_formula_results;
     private:
         FormulaSearcher searcher;
-        MaybeASTDependencies parse_expression(const Expression &expression);
-        MaybeASTDependencies parse_expression(const std::string &expression);
+        MaybeASTDependencies parse_expression(const Expression expression);
+        MaybeASTDependencies parse_expression(const std::string expression);
     };
 }

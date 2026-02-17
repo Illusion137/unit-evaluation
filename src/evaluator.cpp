@@ -24,21 +24,19 @@ std::string dv::Expression::get_single_expression() const {
 }
 
 dv::Evaluator::Evaluator(){
-    const std::span<const dv::AssignExpression> const_expressions = {
-        std::initializer_list<const dv::AssignExpression>{
-            {.identifier = "e_c", .value_expr = "1.602*10^{-19}", .unit_expr = "\\C"},
-            {.identifier = "e_0", .value_expr = "8.854187817*10^{-12}", .unit_expr = "\\frac{\\F}{\\m}"},
-            {.identifier = "k_e", .value_expr = "8.99*10^9", .unit_expr = "\\frac{\\N\\m^2}{\\C^2}"},
-            
-            {.identifier = "c", .value_expr = "2.99792458*10^8", .unit_expr = "\\frac{\\m}{\\s}"},
-            {.identifier = "m_e", .value_expr = "9.1938*10^{-31}", .unit_expr = "\\kg"},
-            {.identifier = "m_p", .value_expr = "1.67262*10^{-27}", .unit_expr = "\\kg"},
-            {.identifier = "m_n", .value_expr = "1.674927*10^{-27}", .unit_expr = "\\kg"},
-            
-            {.identifier = "h", .value_expr = "6.620607015*10^{-34}", .unit_expr = "\\J\\s"},
-            {.identifier = "a_0", .value_expr = "5.291772*10^{-11}", .unit_expr = "\\m"},
-            {.identifier = "N_A", .value_expr = "6.022*10^{23}", .unit_expr = "\\mol^{-1}"},
-        }
+    std::vector<dv::AssignExpression> const_expressions = {
+        {"e_c", "1.602*10^{-19}", "\\C"},
+        {"e_0", "8.854187817*10^{-12}", "\\frac{\\F}{\\m}"},
+        {"k_e", "8.99*10^9", "\\frac{\\N\\m^2}{\\C^2}"},
+        
+        {"c", "2.99792458*10^8", "\\frac{\\m}{\\s}"},
+        {"m_e", "9.1938*10^{-31}", "\\kg"},
+        {"m_p", "1.67262*10^{-27}", "\\kg"},
+        {"m_n", "1.674927*10^{-27}", "\\kg"},
+        
+        {"h", "6.620607015*10^{-34}", "\\J\\s"},
+        {"a_0", "5.291772*10^{-11}", "\\m"},
+        {"N_A", "6.022*10^{23}", "\\mol^{-1}"},
     };
     for(const auto &expression : const_expressions){
         insert_constant(expression.identifier, expression);
@@ -50,6 +48,13 @@ dv::Evaluator::Evaluator(const std::span<const dv::AssignExpression> const_expre
         insert_constant(expression.identifier, expression);
     }
 }
+
+dv::Evaluator::MaybeEvaluated dv::Evaluator::evaluate_expression(const Expression &expression){
+    auto parsed = parse_expression(expression);
+    if(!parsed) return std::unexpected{parsed.error()};
+    return parsed.value().ast->evaluate(*this);
+}
+
 
 std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_list(const std::span<const dv::Expression> expression_list){
     evaluated_variables.clear();
@@ -88,15 +93,15 @@ void dv::Evaluator::insert_constant(const std::string name, const Expression &ex
 
 std::vector<Physics::Formula> dv::Evaluator::get_available_formulas(const dv::UnitVector &target) const noexcept {
     std::vector<dv::UnitVector> available_units;
-    for(auto it = this->evaluated_variables.begin(); it != this->evaluated_variables.end(); it++) {
-        available_units.emplace_back(std::move(it->second.unit));
+    for(const auto &[key, value]: this->evaluated_variables) {
+        available_units.push_back(value.unit);
     }
     return searcher.find_by_units(available_units, target);
 }
 
-dv::MaybeASTDependencies dv::Evaluator::parse_expression(const Expression &expression){
+dv::MaybeASTDependencies dv::Evaluator::parse_expression(const Expression expression){
     auto single_expr = expression.get_single_expression();
-    Lexer lexer{expression.get_single_expression()};
+    Lexer lexer{single_expr};
     const auto &tokens = lexer.extract_all_tokens();
     if(!tokens) {
         return std::unexpected{tokens.error()}; 
@@ -111,7 +116,7 @@ dv::MaybeASTDependencies dv::Evaluator::parse_expression(const Expression &expre
 #endif
 }
 
-dv::MaybeASTDependencies dv::Evaluator::parse_expression(const std::string &expression){
+dv::MaybeASTDependencies dv::Evaluator::parse_expression(const std::string expression){
     Lexer lexer{expression};
     const auto &tokens = lexer.extract_all_tokens();
     if(!tokens) {

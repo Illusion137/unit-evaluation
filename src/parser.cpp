@@ -377,7 +377,7 @@ dv::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
 dv::MaybeAST dv::Parser::match_atom(const dv::Token &token){
     if(token.type == TokenType::NUMERIC_LITERAL) return std::make_unique<AST>(token);
     if(token.type == TokenType::IDENTIFIER) {
-        identifier_dependencies.insert(token.text);
+        identifier_dependencies.insert(std::string{token.text});
         return std::make_unique<AST>(token);
     }
     if(token.type == TokenType::FORMULA_QUERY) return std::make_unique<AST>(token);

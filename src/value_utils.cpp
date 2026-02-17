@@ -1,10 +1,19 @@
 #include "value_utils.hpp"
 #include "dimeval.hpp"
+#include "evaluator.hpp"
 #include <array>
 #include <cmath>
 #include <format>
 #include <string>
 #include <vector>
+
+dv::UnitVector dv::unit_latex_to_unit(const std::string &unit_latex){
+    Expression expr = {"1", unit_latex};
+    Evaluator eval;
+    auto value = eval.evaluate_expression(expr);
+    if(!value) return dv::UnitVector{DIMENSIONLESS_VEC};
+    return value.value().unit;
+}
 
 namespace {
 

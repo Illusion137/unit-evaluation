@@ -1,8 +1,7 @@
-#define EVAL_PRINT_AST
-#include "lexer.hpp"
 #include <print>
 #include "evaluator.hpp"
 #include "testing.hpp"
+#include "value_utils.hpp"
 #include <cstdlib>
 #include <span>
 
@@ -163,21 +162,25 @@ int main(){
     // run_non_related_tests(ALL_TESTS);
 
     // const units = ["m", "kg", "s", "A", "K", "mol", "cd", "N", "J", "Pa", "C", "Hz"];
-
-    std::array<dv::Expression, 1> expressions = {
-        dv::Expression{"\\operatorname{nCr}\\left(3,2\\right)"},
-        // dv::Expression{std::string{"a^2"}},
+    std::println("");
+    std::array<dv::Expression, 4> expressions = {
+        dv::Expression{"P = 5", "\\Pa"},
+        // dv::Expression{"V = 1", "\\m^3"},
+        dv::Expression{"n = 5", "\\mol"},
+        dv::Expression{"t = 5", "\\K"},
+        dv::Expression{"? = \\m^3"}
     };
-
-    std::println("{}", dv::Lexer{expressions[0].get_single_expression()}.extract_all_tokens().value());
-    std::println("{}", expressions[1].get_single_expression());
-
-    dv::Evaluator evaluator{};
+    dv::Evaluator evaluator;
     const auto evaled = evaluator.evaluate_expression_list(expressions);
-    for(const auto &eval : evaled){
-        if(!eval) std::println("[ERROR]: {}", eval.error());
-        else std::println("[VALUE]: {} {}", eval.value().value, eval.value().unit.vec);
+    auto formulas = evaluator.get_available_formulas(dv::unit_latex_to_unit("\\m^3"));
+    std::println("{}\n", evaluator.last_formula_results[0].latex);
+    for(const auto &f: formulas){
+        std::println("{}\n", f.latex);
     }
+    // for(const auto &eval : evaled){
+    //     if(!eval) std::println("[ERROR]: {}", eval.error());
+    //     else std::println("[VALUE]: {} {}", eval.value().value, eval.value().unit.vec);
+    // }
 
     // auto end = std::chrono::steady_clock::now();
     // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

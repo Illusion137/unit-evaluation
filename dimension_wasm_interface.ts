@@ -39,6 +39,10 @@ export interface WasmModule {
     _dv_get_variable(name_ptr: number, out_value_ptr: number): boolean;
     _dv_clear_variables(): void;
     _dv_get_variable_count(): number;
+    _dv_get_last_formula_results(): number;
+    _dv_unit_latex_to_unit(unit_latex_ptr: number, out_unit_ptr: number): void;
+    _dv_unit_to_latex(unit_ptr: number): number;
+    _dv_value_to_scientific(value: number): number;
     _dv_free(ptr: number): void;
     _dv_version(): number;
     _malloc(size: number): number;
@@ -272,6 +276,91 @@ export class DimensionalEvaluator {
         this.module._dv_free_formula_list(list_ptr);
 
         return formulas;
+    }
+
+    // ========================================================================
+    // Last Formula Results
+    // ========================================================================
+
+    get_last_formula_results(): FormulaResult[] {
+        this._check_initialized();
+
+        const list_ptr = this.module._dv_get_last_formula_results();
+
+        if (list_ptr === 0) {
+            return [];
+        }
+
+        // Same layout as dv_formula_list
+        const names_ptr = this.module.HEAPU32[list_ptr / 4];
+        const latexes_ptr = this.module.HEAPU32[list_ptr / 4 + 1];
+        const categories_ptr = this.module.HEAPU32[list_ptr / 4 + 2];
+        const count = this.module.HEAP32[list_ptr / 4 + 3];
+
+        const formulas: FormulaResult[] = [];
+        for (let i = 0; i < count; i++) {
+            const name = this._read_string(this.module.HEAPU32[names_ptr / 4 + i]);
+            const latex = this._read_string(this.module.HEAPU32[latexes_ptr / 4 + i]);
+            const category = this._read_string(this.module.HEAPU32[categories_ptr / 4 + i]);
+            formulas.push({ name, latex, category });
+        }
+
+        this.module._dv_free_formula_list(list_ptr);
+
+        return formulas;
+    }
+
+    // ========================================================================
+    // Value Utilities
+    // ========================================================================
+
+    unit_latex_to_unit(unit_latex: string): number[] {
+        this._check_initialized();
+        const latex_ptr = this._alloc_string(unit_latex);
+        const out_ptr = this.module._malloc(7);
+
+        try {
+            this.module._dv_unit_latex_to_unit(latex_ptr, out_ptr);
+            const unit: number[] = [];
+            for (let i = 0; i < 7; i++) {
+                unit.push(this.module.HEAP8[out_ptr + i]);
+            }
+            return unit;
+        } finally {
+            this.module._dv_free(latex_ptr);
+            this.module._dv_free(out_ptr);
+        }
+    }
+
+    unit_to_latex(unit: number[]): string {
+        this._check_initialized();
+        const unit_ptr = this.module._malloc(7);
+        for (let i = 0; i < 7; i++) {
+            this.module.HEAP8[unit_ptr + i] = unit[i] ?? 0;
+        }
+
+        const result_ptr = this.module._dv_unit_to_latex(unit_ptr);
+        this.module._dv_free(unit_ptr);
+
+        if (result_ptr === 0) {
+            return '';
+        }
+
+        const result = this._read_string(result_ptr);
+        this.module._dv_free(result_ptr);
+        return result;
+    }
+
+    value_to_scientific(value: number): string {
+        const result_ptr = this.module._dv_value_to_scientific(value);
+
+        if (result_ptr === 0) {
+            return '';
+        }
+
+        const result = this._read_string(result_ptr);
+        this.module._dv_free(result_ptr);
+        return result;
     }
 
     // ========================================================================

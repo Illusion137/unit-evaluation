@@ -293,6 +293,67 @@ int dv_get_variable_count() {
 }
 
 // ============================================================================
+// Last Formula Results
+// ============================================================================
+
+WASM_EXPORT
+dv_formula_list* dv_get_last_formula_results() {
+    if (!g_eval) return nullptr;
+
+    const auto& formulas = g_eval->last_formula_results;
+    if (formulas.empty()) return nullptr;
+
+    auto* list = (dv_formula_list*)malloc(sizeof(dv_formula_list));
+    list->count = static_cast<int>(formulas.size());
+    list->names = (char**)malloc(sizeof(char*) * list->count);
+    list->latexes = (char**)malloc(sizeof(char*) * list->count);
+    list->categories = (char**)malloc(sizeof(char*) * list->count);
+
+    for (int i = 0; i < list->count; i++) {
+        list->names[i] = (char*)malloc(formulas[i].name.length() + 1);
+        strcpy(list->names[i], formulas[i].name.c_str());
+
+        list->latexes[i] = (char*)malloc(formulas[i].latex.length() + 1);
+        strcpy(list->latexes[i], formulas[i].latex.c_str());
+
+        list->categories[i] = (char*)malloc(formulas[i].category.length() + 1);
+        strcpy(list->categories[i], formulas[i].category.c_str());
+    }
+
+    return list;
+}
+
+// ============================================================================
+// Value Utilities
+// ============================================================================
+
+WASM_EXPORT
+void dv_unit_latex_to_unit(const char* unit_latex, int8_t* out_unit) {
+    if (!unit_latex || !out_unit) return;
+    auto unit = unit_latex_to_unit(unit_latex);
+    memcpy(out_unit, unit.vec.data(), 7 * sizeof(int8_t));
+}
+
+WASM_EXPORT
+const char* dv_unit_to_latex(const int8_t* unit) {
+    if (!unit) return nullptr;
+    UnitVector uv;
+    memcpy(uv.vec.data(), unit, 7 * sizeof(int8_t));
+    auto latex = unit_to_latex(uv);
+    char* result = (char*)malloc(latex.length() + 1);
+    strcpy(result, latex.c_str());
+    return result;
+}
+
+WASM_EXPORT
+const char* dv_value_to_scientific(double value) {
+    auto sci = value_to_scientific(static_cast<long double>(value));
+    char* result = (char*)malloc(sci.length() + 1);
+    strcpy(result, sci.c_str());
+    return result;
+}
+
+// ============================================================================
 // Memory Management Helpers
 // ============================================================================
 

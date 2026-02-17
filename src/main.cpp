@@ -1,3 +1,7 @@
+#define EVAL_PRINT_AST
+#include "lexer.hpp"
+#include <print>
+#include "evaluator.hpp"
 #include "testing.hpp"
 #include <cstdlib>
 #include <span>
@@ -156,14 +160,17 @@ int main(){
         {"\\ceil(\\pi)", 4},
         {"\\operatorname{nCr}\\left(3,2\\right)", 3}
     };
-    run_non_related_tests(ALL_TESTS);
+    // run_non_related_tests(ALL_TESTS);
 
     // const units = ["m", "kg", "s", "A", "K", "mol", "cd", "N", "J", "Pa", "C", "Hz"];
 
-    std::array<std::string_view, 2> expressions = {
-        "a = \\left(10\\right)\\cdot\\kg\\cdot\\m\\cdot\\s^{-1}",
-        "a^2",
+    std::array<dv::Expression, 1> expressions = {
+        dv::Expression{"\\operatorname{nCr}\\left(3,2\\right)"},
+        // dv::Expression{std::string{"a^2"}},
     };
+
+    std::println("{}", dv::Lexer{expressions[0].get_single_expression()}.extract_all_tokens().value());
+    std::println("{}", expressions[1].get_single_expression());
 
     dv::Evaluator evaluator{};
     const auto evaled = evaluator.evaluate_expression_list(expressions);

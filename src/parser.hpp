@@ -4,17 +4,34 @@
 #include "ast.hpp"
 #include <expected>
 #include <memory>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace dv {
+    using MaybeAST = std::expected<std::unique_ptr<AST>, std::string>;
+    struct ASTDependencies {
+        std::unique_ptr<AST> ast;
+        const std::unordered_set<std::string> &identifier_dependencies;
+    };
+    using MaybeASTDependencies = std::expected<ASTDependencies, std::string>;
+
     class Parser {
     public:
         Parser(const std::vector<dv::Token> &token_list): tokens{token_list} {}
-        using MaybeAST = std::expected<std::unique_ptr<AST>, std::string>;
-        inline MaybeAST parse() { return parse_expression(0); }
+        inline MaybeASTDependencies parse() {
+            auto maybe_ast = parse_expression(0);
+            if(!maybe_ast) return std::unexpected{maybe_ast.error()};
+            return ASTDependencies{
+                std::move(maybe_ast.value()),
+                this->identifier_dependencies
+            };
+        }
     private:
         std::vector<dv::Token> tokens;
+        std::unordered_set<std::string> identifier_dependencies;
         std::size_t position = 0;
+        bool has_equal = false;
     
         inline Token& peek() { return tokens[position]; }
         inline Token& peek_next() { return tokens[position + 1]; }

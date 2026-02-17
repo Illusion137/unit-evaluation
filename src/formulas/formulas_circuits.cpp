@@ -437,10 +437,6 @@ void FormulaDatabase::initialize_circuits() {
         "Energy Dissipated",
         "t"
     });
-}
-
-} // namespace Physics
-    
     // ========================================================================
     // DRIFT VELOCITY: I = n * q * v_d * A
     // ========================================================================
@@ -775,3 +771,7 @@ void FormulaDatabase::initialize_circuits() {
         "Wheatstone Bridge Balanced",
         "R_4"
     });
+}
+
+} // namespace Physics
+    

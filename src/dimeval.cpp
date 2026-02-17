@@ -2,10 +2,10 @@
 #include <cmath>
 
 bool dv::UnitVector::operator==(const UnitVector &rhs) const noexcept {
-    return std::memcmp(this->vec.data(), rhs.vec.data(), sizeof(std::int8_t)) == 0;
+    return vec == rhs.vec;
 }
 bool dv::UnitVector::operator==(const UnitVec &rhs) const noexcept {
-    return std::memcmp(this->vec.data(), rhs.data(), sizeof(std::int8_t)) == 0;
+    return vec == rhs;
 }
 dv::UnitVector dv::UnitVector::operator+(const UnitVector &rhs) const noexcept {
     UnitVector temp_vec = *this;

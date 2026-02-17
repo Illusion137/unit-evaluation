@@ -8,7 +8,7 @@
 namespace dv {
     class Lexer {
     public:
-        Lexer(const std::string_view view) noexcept;
+        Lexer(const std::string view) noexcept;
         using MaybeTokens = std::expected<std::vector<dv::Token>, std::string>;
         MaybeTokens extract_all_tokens() noexcept;
     private:

@@ -499,10 +499,6 @@ void FormulaDatabase::initialize_electrostatics() {
         "Capacitors in Parallel",
         "C_1"
     });
-}
-
-} // namespace Physics
-    
     // ========================================================================
     // CAPACITANCE WITH DIELECTRIC: C = kappa * C_0
     // ========================================================================
@@ -930,3 +926,7 @@ void FormulaDatabase::initialize_electrostatics() {
         "Cylindrical Capacitor",
         "C"
     });
+}
+
+} // namespace Physics
+    

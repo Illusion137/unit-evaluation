@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <expected>
+#include <print>
 
 template <std::size_t N>
 struct LiteralString {
@@ -36,7 +37,7 @@ constexpr bool isnumeric(char c){
     return std::isdigit(c) || c == '.';
 }
 
-dv::Lexer::Lexer(const std::string_view view) noexcept{
+dv::Lexer::Lexer(const std::string view) noexcept{
     begin = view.data();
     it = begin;
     length = view.size();
@@ -45,7 +46,9 @@ dv::Lexer::MaybeTokens dv::Lexer::extract_all_tokens() noexcept{
     std::vector<Token> tokens;
     tokens.reserve(length / 2);
     Token token;
+    std::println("START:");
     while((token = consume_next_token()).type != TokenType::TEOF){
+        std::println("{}", token);
         if(token.has_error()) {
             return std::unexpected{token.get_error_message()};
         }
@@ -55,7 +58,7 @@ dv::Lexer::MaybeTokens dv::Lexer::extract_all_tokens() noexcept{
     return tokens;
 }
 
-std::uint32_t dv::Lexer::remaining_length() const noexcept { return length - (begin - it); }
+std::uint32_t dv::Lexer::remaining_length() const noexcept { return length - (it - begin); }
 char dv::Lexer::peek() const noexcept { return *it; }
 char dv::Lexer::peek_next() const noexcept { return *(it + 1); }
 void dv::Lexer::advance() noexcept { it++; }
@@ -187,7 +190,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
         }
     }
     if(remaining_length() >= 4) {
-        switch(*(std::uint32_t*)it) {
+        switch(strint(it, 4)) {
             case strint<"sqrt">(): return advance_with_token(TokenType::BUILTIN_FUNC_SQRT, 4);
             case strint<"ceil">(): return advance_with_token(TokenType::BUILTIN_FUNC_CEIL, 4);
             case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 4);
@@ -212,7 +215,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
         }
     }
     if(remaining_length() >= 2) {
-        switch(*(std::uint16_t*)it) {
+        switch(strint(it, 2)) {
             case strint<"pi">(): return advance_with_token(M_PI, 2);
             case strint<"ln">(): return advance_with_token(TokenType::BUILTIN_FUNC_LN, 2);
             default: break;
@@ -235,7 +238,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
                 }
             }
             if(write >= 4) {
-                switch(*(std::uint32_t*)buffer.data()) {
+                switch(strint(buffer.data(), 4)) {
                     case strint<"ceil">(): return advance_with_token(TokenType::BUILTIN_FUNC_CEIL, 0);
                     case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 0);
                     case strint<"unit">(): return advance_with_token(TokenType::BUILTIN_FUNC_UNIT, 0);
@@ -567,6 +570,7 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
         case '[': return advance_with_token(TokenType::LEFT_BRACKET);
         case ']': return advance_with_token(TokenType::RIGHT_BRACKET);
         case '|': return advance_with_token(TokenType::ABSOLUTE_BAR);
+        case '?': return advance_with_token(TokenType::FORMULA_QUERY);
         case '\\': return get_special_indentifier_token();
         default: {
             if(isnumeric(peek())) return get_numeric_literal_token();

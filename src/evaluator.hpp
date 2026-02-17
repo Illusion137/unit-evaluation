@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dimeval.hpp"
+#include "formula_finder.hpp"
 #include <expected>
 #include <span>
 #include <unordered_map>
@@ -8,15 +9,35 @@
 
 namespace dv {
     struct AST;
+    struct ASTDependencies;
+    using MaybeASTDependencies = std::expected<ASTDependencies, std::string>;
+    struct Expression {
+        std::string value_expr;
+        std::string unit_expr;
+        std::string get_single_expression() const;
+    };
+    struct AssignExpression: public Expression {
+        std::string identifier;
+        std::string value_expr;
+        std::string unit_expr;
+    };
     class Evaluator {
         public:
-        using MaybeAST = std::expected<std::unique_ptr<AST>, std::string>;
         using MaybeEvaluated = std::expected<EValue, std::string>;
-        std::vector<MaybeEvaluated> evaluate_expression_list(const std::span<const std::string_view> expression_list); 
-        void insert_constant(const std::string_view name, const std::string_view expression, const std::string_view unit_expression);
+        
+        Evaluator();
+        Evaluator(const std::span<const AssignExpression> const_expressions);
+
+        std::vector<MaybeEvaluated> evaluate_expression_list(const std::span<const Expression> expression_list); 
+        void insert_constant(const std::string name, const Expression &expression);
+        std::vector<Physics::Formula> get_available_formulas(const dv::UnitVector &target) const noexcept;
+
         std::unordered_map<std::string, EValue> fixed_constants;
-        std::unordered_map<std::string, EValue> evaluated_variables;
+        std::map<std::string, EValue> evaluated_variables;
+        std::vector<Physics::Formula> last_formula_results;
     private:
-        MaybeAST parse_expression(const std::string_view expression);
+        FormulaSearcher searcher;
+        MaybeASTDependencies parse_expression(const Expression &expression);
+        MaybeASTDependencies parse_expression(const std::string &expression);
     };
 }

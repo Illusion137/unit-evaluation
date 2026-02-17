@@ -1,7 +1,6 @@
 #pragma once
 
 #include "dimeval.hpp"
-#include <string_view>
 #include <format>
 #include <vector>
 
@@ -56,16 +55,17 @@ namespace dv {
         BUILTIN_FUNC_ARCCOT,
         BUILTIN_FUNC_UNIT,
         BUILTIN_FUNC_VALUE,
+        FORMULA_QUERY,
     };
     
     struct Token {
         TokenType type;
-        std::string_view text;
+        std::string text;
         EValue value;
         Token(): type{TokenType::UNKNOWN}, text{""}, value{0} {}
-        Token(const EValue value, const std::string_view token_text): type{TokenType::NUMERIC_LITERAL}, text{token_text}, value{value} {}
-        Token(const TokenType token_type, const std::string_view token_text): type{token_type}, text{token_text}, value{0} {}
-        Token(const TokenType token_type, const double token_value, const std::string_view token_text): type{token_type}, text{token_text}, value{token_value} {}
+        Token(const EValue value, const std::string token_text): type{TokenType::NUMERIC_LITERAL}, text{token_text}, value{value} {}
+        Token(const TokenType token_type, const std::string token_text): type{token_type}, text{token_text}, value{0} {}
+        Token(const TokenType token_type, const double token_value, const std::string token_text): type{token_type}, text{token_text}, value{token_value} {}
         operator bool() const noexcept{ return type != TokenType::TEOF; }
         inline bool has_error() const noexcept{
             switch (type) {

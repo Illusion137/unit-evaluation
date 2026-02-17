@@ -22,6 +22,9 @@
 #define DIM_FARAD    { -2, 4, -1, 2, 0, 0, 0 }
 #define DIM_VOLT     { 2, -3, 1, -1, 0, 0, 0 }
 #define DIM_WATT     { 2, -3, 1, 0, 0, 0, 0 }
+#define DIM_WEBER    { 2, -2, 1, -1, 0, 0, 0 }
+#define DIM_TESLA    { 0, -2, 1, -1, 0, 0, 0 }
+#define DIM_HENRY    { 2, -2, 1, -2, 0, 0, 0 }
 
 namespace dv {
     // m	meter	[ 1, 0, 0, 0, 0, 0, 0 ]

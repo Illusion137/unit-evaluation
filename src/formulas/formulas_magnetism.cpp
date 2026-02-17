@@ -398,10 +398,6 @@ void FormulaDatabase::initialize_magnetism() {
         "Cyclotron Frequency",
         "m"
     });
-}
-
-} // namespace Physics
-    
     // ========================================================================
     // MAGNETIC ENERGY DENSITY: u = B^2 / (2 * mu_0)
     // ========================================================================
@@ -909,3 +905,7 @@ void FormulaDatabase::initialize_magnetism() {
         "Mass Spectrometer",
         "B"
     });
+}
+
+} // namespace Physics
+    

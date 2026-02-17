@@ -1,0 +1,83 @@
+[
+    {
+        "name": "Faraday's Law",
+        "latex": "\\mathcal{E} = \\frac{N\\Delta\\Phi_B}{\\Delta t}",
+        "variables": [
+            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "\\Delta\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Change in magnetic flux", "constant": false },
+            { "name": "\\Delta t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time interval", "constant": false }
+        ]
+    },
+    {
+        "name": "Faraday's Law (Area Form)",
+        "latex": "\\mathcal{E} = \\frac{NBA}{t}",
+        "variables": [
+            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "Motional EMF",
+        "latex": "\\mathcal{E} = BLv",
+        "variables": [
+            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of conductor", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity", "constant": false }
+        ]
+    },
+    {
+        "name": "Generator EMF",
+        "latex": "\\mathcal{E} = NBA\\omega",
+        "variables": [
+            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Peak EMF", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area of coil", "constant": false },
+            { "name": "\\omega", "unit": [0, -1, 0, 0, 0, 0, 0], "description": "Angular velocity", "constant": false }
+        ]
+    },
+    {
+        "name": "Transformer Voltage",
+        "latex": "V_2 = V_1\\frac{N_2}{N_1}",
+        "variables": [
+            { "name": "V_2", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Secondary voltage", "constant": false },
+            { "name": "V_1", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Primary voltage", "constant": false },
+            { "name": "N_2", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Secondary turns", "constant": false },
+            { "name": "N_1", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Primary turns", "constant": false }
+        ]
+    },
+    {
+        "name": "Transformer Current",
+        "latex": "I_2 = \\frac{I_1 N_1}{N_2}",
+        "variables": [
+            { "name": "I_2", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Secondary current", "constant": false },
+            { "name": "I_1", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Primary current", "constant": false },
+            { "name": "N_1", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Primary turns", "constant": false },
+            { "name": "N_2", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Secondary turns", "constant": false }
+        ]
+    },
+    {
+        "name": "Motional EMF (Rotating Rod)",
+        "latex": "\\mathcal{E} = \\frac{1}{2}B\\omega L^2",
+        "variables": [
+            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\omega", "unit": [0, -1, 0, 0, 0, 0, 0], "description": "Angular velocity", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of rod", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Flux Change",
+        "latex": "\\Delta\\Phi_B = B\\Delta A",
+        "variables": [
+            { "name": "\\Delta\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Change in magnetic flux", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\Delta A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Change in area", "constant": false }
+        ]
+    }
+]

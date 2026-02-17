@@ -1,0 +1,112 @@
+[
+    {
+        "name": "Magnetic Field of Long Straight Wire",
+        "latex": "B = \\frac{\\mu_0 I}{2\\pi r}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "\\pi", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Pi", "constant": true },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance from wire", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field of Solenoid",
+        "latex": "B = \\mu_0 nI",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "n", "unit": [-1, 0, 0, 0, 0, 0, 0], "description": "Turns per unit length", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field of Toroid",
+        "latex": "B = \\frac{\\mu_0 NI}{2\\pi r}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Total number of turns", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "\\pi", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Pi", "constant": true },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of toroid", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field at Center of Circular Loop",
+        "latex": "B = \\frac{\\mu_0 I}{2R}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "R", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of loop", "constant": false }
+        ]
+    },
+    {
+        "name": "Force Between Parallel Currents",
+        "latex": "\\frac{F}{L} = \\frac{\\mu_0 I_1 I_2}{2\\pi d}",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Force", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of wire", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I_1", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current 1", "constant": false },
+            { "name": "I_2", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current 2", "constant": false },
+            { "name": "\\pi", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Pi", "constant": true },
+            { "name": "d", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance between wires", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Energy Density",
+        "latex": "u = \\frac{B^2}{2\\mu_0}",
+        "variables": [
+            { "name": "u", "unit": [-1, -2, 1, 0, 0, 0, 0], "description": "Energy density", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true }
+        ]
+    },
+    {
+        "name": "Magnetic Field on Axis of Circular Loop",
+        "latex": "B = \\frac{\\mu_0 IR^2}{2(R^2 + x^2)^{3/2}}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field on axis", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "R", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of loop", "constant": false },
+            { "name": "x", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance from center along axis", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field of Solenoid (Total Turns)",
+        "latex": "B = \\frac{\\mu_0 NI}{L}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Total number of turns", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of solenoid", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field Inside Wire",
+        "latex": "B = \\frac{\\mu_0 Ir}{2\\pi R^2}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field inside wire", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance from center of wire", "constant": false },
+            { "name": "\\pi", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Pi", "constant": true },
+            { "name": "R", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of wire", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field of Dipole on Axis",
+        "latex": "B = \\frac{\\mu_0 \\mu}{2\\pi r^3}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field on axis of dipole", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "\\mu", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment", "constant": false },
+            { "name": "\\pi", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Pi", "constant": true },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance from dipole", "constant": false }
+        ]
+    }
+]

@@ -1,0 +1,158 @@
+[
+    {
+        "name": "Magnetic Force on Moving Charge",
+        "latex": "F = qvB",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on Current-Carrying Wire",
+        "latex": "F = BIL",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Wire length", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Radius",
+        "latex": "r = \\frac{mv}{qB}",
+        "variables": [
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Cyclotron radius", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Frequency",
+        "latex": "f = \\frac{qB}{2\\pi m}",
+        "variables": [
+            { "name": "f", "unit": [0, -1, 0, 0, 0, 0, 0], "description": "Cyclotron frequency", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\pi", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Pi", "constant": true },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Period",
+        "latex": "T = \\frac{2\\pi m}{qB}",
+        "variables": [
+            { "name": "T", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Cyclotron period", "constant": false },
+            { "name": "\\pi", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Pi", "constant": true },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Flux",
+        "latex": "\\Phi_B = BA",
+        "variables": [
+            { "name": "\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Magnetic flux", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area", "constant": false }
+        ]
+    },
+    {
+        "name": "Hall Voltage",
+        "latex": "V_H = \\frac{BId}{nqt}",
+        "variables": [
+            { "name": "V_H", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Hall voltage", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "d", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Width of conductor", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Charge carrier density", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge per carrier", "constant": false },
+            { "name": "t", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Thickness of conductor", "constant": false }
+        ]
+    },
+    {
+        "name": "Torque on Magnetic Dipole",
+        "latex": "\\tau = nIAB",
+        "variables": [
+            { "name": "\\tau", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Torque", "constant": false },
+            { "name": "n", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area of loop", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Dipole Moment",
+        "latex": "\\mu = nIA",
+        "variables": [
+            { "name": "\\mu", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment", "constant": false },
+            { "name": "n", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area of loop", "constant": false }
+        ]
+    },
+    {
+        "name": "Velocity Selector",
+        "latex": "v = \\frac{E}{B}",
+        "variables": [
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Selected velocity", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on Charge (with Angle)",
+        "latex": "F = qvB\\sin(\\theta)",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between velocity and field", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on Wire (with Angle)",
+        "latex": "F = BIL\\sin(\\theta)",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Wire length", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between wire and field", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Kinetic Energy",
+        "latex": "KE = \\frac{q^2 B^2 r^2}{2m}",
+        "variables": [
+            { "name": "KE", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Kinetic energy", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Cyclotron radius", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Potential Energy of Dipole",
+        "latex": "U = \\mu B",
+        "variables": [
+            { "name": "U", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Potential energy", "constant": false },
+            { "name": "\\mu", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Hall Coefficient",
+        "latex": "R_H = \\frac{1}{nq}",
+        "variables": [
+            { "name": "R_H", "unit": [3, -1, 0, -1, 0, 0, 0], "description": "Hall coefficient", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Charge carrier density", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge per carrier", "constant": false }
+        ]
+    }
+]

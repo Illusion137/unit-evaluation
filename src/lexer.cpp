@@ -314,6 +314,8 @@ dv::Token dv::Lexer::get_unit_token() noexcept {
         UNIT_CASE("POhm", 1e+15, DIM_OHM);
         UNIT_CASE("Emol", 1e+18, DIM_MOLE);
         UNIT_CASE("EOhm", 1e+18, DIM_OHM);
+
+        UNIT_CASE("hour", 60 * 60, DIM_SECOND);
     } UNIT_CASE_LIST_END()
     UNIT_CASE_LIST_BEGIN(3) {
         UNIT_CASE("acd", 1e-18, DIM_CANDELA);
@@ -357,6 +359,9 @@ dv::Token dv::Lexer::get_unit_token() noexcept {
         UNIT_CASE("Ecd", 1e+18, DIM_CANDELA);
         UNIT_CASE("EPa", 1e+18, DIM_PASCAL);
         UNIT_CASE("EHz", 1e+18, DIM_HERTZ);
+
+        UNIT_CASE("min", 60, DIM_SECOND);
+        UNIT_CASE("ATM", 101325, DIM_PASCAL);
     } UNIT_CASE_LIST_END()
     UNIT_CASE_LIST_BEGIN(2) {
         UNIT_CASE("am", 1e-18, DIM_METER);

@@ -34,6 +34,8 @@ dv::Evaluator::Evaluator(){
         {"m_p", "1.67262*10^{-27}", "\\kg"},
         {"m_n", "1.674927*10^{-27}", "\\kg"},
         
+        {"R", "8.31446", "\\J\\K^{-1}\\mol^{-1}"},
+        {"C_K", "273.15", "\\K"},
         {"h", "6.620607015*10^{-34}", "\\J\\s"},
         {"a_0", "5.291772*10^{-11}", "\\m"},
         {"N_A", "6.022*10^{23}", "\\mol^{-1}"},
@@ -43,11 +45,11 @@ dv::Evaluator::Evaluator(){
     }
 }
 
-dv::Evaluator::Evaluator(const std::span<const dv::AssignExpression> const_expressions){
-    for(const auto &expression : const_expressions){
-        insert_constant(expression.identifier, expression);
-    }
-}
+// dv::Evaluator::Evaluator(const std::span<const dv::AssignExpression> const_expressions){
+//     for(const auto &expression : const_expressions){
+//         insert_constant(expression.identifier, expression);
+//     }
+// }
 
 dv::Evaluator::MaybeEvaluated dv::Evaluator::evaluate_expression(const Expression &expression){
     auto parsed = parse_expression(expression);

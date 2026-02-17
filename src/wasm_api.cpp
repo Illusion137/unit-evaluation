@@ -1,3 +1,4 @@
+#include "dimeval.hpp"
 #include "evaluator.hpp"
 #include "value_utils.hpp"
 #include <cmath>
@@ -74,7 +75,7 @@ int dv_get_constant_count() {
 // ============================================================================
 
 struct dv_result {
-    long double value;
+    double value;
     int8_t unit[7];
     bool success;
     char error[256];
@@ -106,7 +107,7 @@ dv_result dv_eval(const char* value_expr, const char* unit_expr) {
         memcpy(result.unit, ev.unit.vec.data(), 7 * sizeof(int8_t));
         result.success = true;
 
-        auto latex = unit_to_latex(ev.unit);
+        auto latex = ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC} ? "" : unit_to_latex(ev.unit);
         strncpy(result.unit_latex, latex.c_str(), sizeof(result.unit_latex) - 1);
         result.unit_latex[sizeof(result.unit_latex) - 1] = '\0';
 
@@ -126,7 +127,7 @@ dv_result dv_eval(const char* value_expr, const char* unit_expr) {
 // ============================================================================
 
 struct dv_batch_result {
-    long double* values;
+    double* values;
     int8_t** units;
     bool* successes;
     char** errors;
@@ -141,7 +142,7 @@ dv_batch_result* dv_eval_batch(const char** value_exprs, const char** unit_exprs
 
     auto* batch = (dv_batch_result*)malloc(sizeof(dv_batch_result));
     batch->count = count;
-    batch->values = (long double*)malloc(sizeof(long double) * count);
+    batch->values = (double*)malloc(sizeof(double) * count);
     batch->units = (int8_t**)malloc(sizeof(int8_t*) * count);
     for (int i = 0; i < count; i++) {
         batch->units[i] = (int8_t*)malloc(sizeof(int8_t) * 7);
@@ -168,7 +169,7 @@ dv_batch_result* dv_eval_batch(const char** value_exprs, const char** unit_exprs
             batch->successes[i] = true;
             batch->errors[i] = nullptr;
 
-            auto latex = unit_to_latex(ev.unit);
+            auto latex = ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC} ? "" : unit_to_latex(ev.unit);
             batch->unit_latexes[i] = (char*)malloc(latex.length() + 1);
             strcpy(batch->unit_latexes[i], latex.c_str());
 
@@ -272,7 +273,7 @@ void dv_free_formula_list(dv_formula_list* list) {
 // ============================================================================
 
 WASM_EXPORT
-bool dv_get_variable(const char* name, long double* out_value) {
+bool dv_get_variable(const char* name, double* out_value) {
     if (!g_eval || !name || !out_value) return false;
 
     auto it = g_eval->evaluated_variables.find(name);
@@ -347,7 +348,7 @@ const char* dv_unit_to_latex(const int8_t* unit) {
 
 WASM_EXPORT
 const char* dv_value_to_scientific(double value) {
-    auto sci = value_to_scientific(static_cast<long double>(value));
+    auto sci = value_to_scientific(static_cast<double>(value));
     char* result = (char*)malloc(sci.length() + 1);
     strcpy(result, sci.c_str());
     return result;

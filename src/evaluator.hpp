@@ -26,7 +26,7 @@ namespace dv {
         using MaybeEvaluated = std::expected<EValue, std::string>;
         
         Evaluator();
-        Evaluator(const std::span<const AssignExpression> const_expressions);
+        // Evaluator(const std::span<const AssignExpression> const_expressions);
 
         MaybeEvaluated evaluate_expression(const Expression &expression); 
         std::vector<MaybeEvaluated> evaluate_expression_list(const std::span<const Expression> expression_list); 

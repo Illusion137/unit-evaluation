@@ -1,5 +1,8 @@
 #include "dimeval.hpp"
 #include "formulas/physics_formulas.hpp"
+#include <algorithm>
+#include <set>
+#include <string>
 #include <vector>
 
 const auto formula_database = Physics::FormulaDatabase{};
@@ -69,30 +72,34 @@ public:
     // }
     
     // Search by unit signature (find what you can calculate)
+    // Returns exact matches first, then close matches (missing 1 unit) at the end.
+    // Deduplicates by formula name.
     std::vector<Physics::Formula> find_by_units(
         const std::vector<dv::UnitVector>& available_units,
         const dv::UnitVector& targetUnit
     ) const {
-        std::vector<Physics::Formula> matches;
-        
+        std::vector<Physics::Formula> exact_matches;
+        std::vector<Physics::Formula> close_matches;
+        std::set<std::string> seen;
+
         for (const auto &formula : db.get_formulas()) {
             auto solveForVar = std::find_if(
                 formula.variables.begin(),
                 formula.variables.end(),
                 [&](const Physics::Variable& v) { return v.name == formula.solve_for; }
             );
-            
+
             if (solveForVar == formula.variables.end()) continue;
-            
+
             // Check if output unit matches target
             if (targetUnit.vec != solveForVar->units) continue;
-            
-            // Check if we have all input units
-            bool hasAllUnits = true;
+
+            // Count missing input units
+            int missing = 0;
             for (const auto& var : formula.variables) {
                 if (var.is_constant) continue;
                 if (var.name == formula.solve_for) continue;
-                
+
                 bool found = false;
                 for (const auto& unit : available_units) {
                     if (unit.vec == var.units) {
@@ -100,19 +107,25 @@ public:
                         break;
                     }
                 }
-                
-                if (!found) {
-                    hasAllUnits = false;
-                    break;
-                }
+
+                if (!found) missing++;
             }
-            
-            if (hasAllUnits) {
-                matches.push_back(formula);
+
+            // Deduplicate by name
+            if (seen.contains(formula.name)) continue;
+
+            if (missing == 0) {
+                seen.insert(formula.name);
+                exact_matches.push_back(formula);
+            } else if (missing == 1) {
+                seen.insert(formula.name);
+                close_matches.push_back(formula);
             }
         }
-        
-        return matches;
+
+        // Append close matches after exact matches
+        exact_matches.insert(exact_matches.end(), close_matches.begin(), close_matches.end());
+        return exact_matches;
     }
     
     // Search by category

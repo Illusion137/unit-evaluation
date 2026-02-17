@@ -441,7 +441,7 @@ export class DimensionalEvaluator {
     }
 
     private _read_fixed_string(ptr: number, max_len: number): string {
-        const end = ptr + max_len;
+        // const end = ptr + max_len;
         let len = 0;
         while (len < max_len && this.module.HEAPU8[ptr + len] !== 0) {
             len++;

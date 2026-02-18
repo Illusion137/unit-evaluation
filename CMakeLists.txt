@@ -32,11 +32,11 @@ if(EMSCRIPTEN)
         SUFFIX ".js"
     )
 else()
-    add_library(UnitEvalCore STATIC ${SRC_FILES})
+    # add_library(UnitEvalCore STATIC ${SRC_FILES})
 
-    target_compile_options(UnitEvalCore PRIVATE
-        -Wall -O3 -Wno-reorder-init-list
-    )
+    # target_compile_options(UnitEvalCore PRIVATE
+    #     -Wall -O3 -Wno-reorder-init-list
+    # )
 
     add_executable(
         UnitEval

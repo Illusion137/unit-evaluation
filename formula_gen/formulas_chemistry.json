@@ -99,10 +99,10 @@
     },
     {
         "name": "First-Order Rate Law",
-        "latex": "[A] = [A]_0 e^{-kt}",
+        "latex": "A = A_0 e^{-kt}",
         "variables": [
-            { "name": "[A]", "unit": [-3, 0, 0, 0, 0, 1, 0], "description": "Concentration at time t", "constant": false },
-            { "name": "[A]_0", "unit": [-3, 0, 0, 0, 0, 1, 0], "description": "Initial concentration", "constant": false },
+            { "name": "A", "unit": [-3, 0, 0, 0, 0, 1, 0], "description": "Concentration at time t", "constant": false },
+            { "name": "A_0", "unit": [-3, 0, 0, 0, 0, 1, 0], "description": "Initial concentration", "constant": false },
             { "name": "k", "unit": [0, -1, 0, 0, 0, 0, 0], "description": "Rate constant (first order)", "constant": false },
             { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
         ]

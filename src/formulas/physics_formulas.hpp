@@ -15,49 +15,20 @@ struct Variable {
 };
 
 struct Formula {
-    std::string name;                    // "Coulomb's Law (solve for F)"
+    std::string name;                    // "Coulomb's Law"
     std::string latex;                   // "F = k \\frac{q_1 q_2}{r^2}"
     std::vector<Variable> variables;     // All variables in the equation
-    std::string category;                // "Electrostatics", "Kinematics", etc.
-    std::string base_formula;            // "Coulomb's Law" (same for all variants)
     std::string solve_for;               // "F" (which variable this solves for)
+    std::string category;
 };
 
 class FormulaDatabase {
 public:
     FormulaDatabase();
-    const std::vector<Formula>& get_formulas() const { return formulas; }
+    const std::vector<Formula> get_formulas() const { return formulas; }
     
 private:
     std::vector<Formula> formulas;
-    
-    // Each category has its own initialization function
-    // Implemented in separate cpp files
-    void initialize_electrostatics();
-    void initialize_circuits();
-    void initialize_magnetism();
-    void initialize_induction();
-    void initialize_electromagnetic_waves();
-    void initialize_kinematics();
-    void initialize_dynamics();
-    void initialize_circular_motion();
-    void initialize_gravity();
-    void initialize_energy();
-    void initialize_momentum();
-    void initialize_rotational_mechanics();
-    void initialize_oscillations();
-    void initialize_waves();
-    void initialize_fluids();
-    void initialize_thermodynamics();
-    void initialize_optics();
-    void initialize_modern_physics();
-    void initialize_chemistry_basic();
-    void initialize_chemistry_solutions();
-    void initialize_chemistry_kinetics();
-    void initialize_chemistry_equilibrium();
-    void initialize_chemistry_acids_bases();
-    void initialize_chemistry_thermochemistry();
-    void initialize_chemistry_electrochemistry();
 };
 
 } // namespace Physics

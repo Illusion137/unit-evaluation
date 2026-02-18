@@ -132,6 +132,15 @@
         ]
     },
     {
+        "name": "Electric Field of Current Density with Resistivity",
+        "latex": "E = J \\rho",
+        "variables": [
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false },
+            { "name": "J", "unit": [-2, 0, 0, 1, 0, 0, 0], "description": "Surface charge density", "constant": false },
+            { "name": "\\rho", "unit": [3, -3, 1, -2, 0, 0, 0], "description": "Resistivity", "constant": false }
+        ]
+    },
+    {
         "name": "Electric Field of Charged Ring on Axis",
         "latex": "E = \\frac{kQx}{(x^2 + R^2)^{3/2}}",
         "variables": [

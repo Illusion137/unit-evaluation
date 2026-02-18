@@ -209,5 +209,5 @@ for (const formula of formlua_list) {
     }
 }
 
-console.log(JSON.stringify(output_formulas));
+fs.writeFileSync("formula_gen/all_formulas.json", JSON.stringify(output_formulas));
 // console.log(JSON.stringify(output_formulas.length));

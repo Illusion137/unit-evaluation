@@ -29,10 +29,10 @@
     },
     {
         "name": "EMF with Internal Resistance",
-        "latex": "V = \\mathcal{E} - Ir",
+        "latex": "V = E - Ir",
         "variables": [
             { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Terminal voltage", "constant": false },
-            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force", "constant": false },
             { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
             { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
         ]
@@ -77,19 +77,19 @@
     },
     {
         "name": "Maximum Power Transfer",
-        "latex": "P_{max} = \\frac{\\mathcal{E}^2}{4R}",
+        "latex": "P_{max} = \\frac{E^2}{4R}",
         "variables": [
             { "name": "P_{max}", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Maximum power delivered to load", "constant": false },
-            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force", "constant": false },
             { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false }
         ]
     },
     {
         "name": "Power Delivered by EMF",
-        "latex": "P = \\mathcal{E}I",
+        "latex": "P = EI",
         "variables": [
             { "name": "P", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Power delivered", "constant": false },
-            { "name": "\\mathcal{E}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force", "constant": false },
             { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false }
         ]
     }

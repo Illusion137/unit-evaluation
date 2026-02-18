@@ -40,9 +40,9 @@
     },
     {
         "name": "Mutual Inductance EMF",
-        "latex": "\\mathcal{E}_2 = \\frac{MI_1}{t}",
+        "latex": "E_2 = \\frac{MI_1}{t}",
         "variables": [
-            { "name": "\\mathcal{E}_2", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF in coil 2", "constant": false },
+            { "name": "E_2", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF in coil 2", "constant": false },
             { "name": "M", "unit": [2, -2, 1, -2, 0, 0, 0], "description": "Mutual inductance", "constant": false },
             { "name": "I_1", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current change in coil 1", "constant": false },
             { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time interval", "constant": false }

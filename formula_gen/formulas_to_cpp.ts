@@ -16,7 +16,7 @@ const str = `#include "physics_formulas.hpp"
 namespace Physics {
     FormulaDatabase::FormulaDatabase() {
         this->formulas.reserve(2000);
-${to_formula_list(all_formulas)}
+${to_formula_list(all_formulas).replaceAll('\\', '\\\\')}
     }
 } // namespace Physics
 `

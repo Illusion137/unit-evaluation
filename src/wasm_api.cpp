@@ -220,8 +220,38 @@ struct dv_formula_list {
     char** names;
     char** latexes;
     char** categories;
+    char** variables_json;
     int count;
 };
+
+static std::string escape_json_string(const std::string& s) {
+    std::string out;
+    out.reserve(s.size() + 8);
+    for (char c : s) {
+        switch (c) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n"; break;
+            default:   out += c;
+        }
+    }
+    return out;
+}
+
+static std::string variables_to_json(const std::vector<Physics::Variable>& vars) {
+    std::string json = "[";
+    for (size_t i = 0; i < vars.size(); i++) {
+        if (i > 0) json += ",";
+        json += "{\"name\":\"" + escape_json_string(vars[i].name) + "\"";
+        json += ",\"units\":\"" + escape_json_string(unit_to_latex(vars[i].units)) + "\"";
+        json += ",\"description\":\"" + escape_json_string(vars[i].description) + "\"";
+        json += ",\"is_constant\":";
+        json += vars[i].is_constant ? "true" : "false";
+        json += "}";
+    }
+    json += "]";
+    return json;
+}
 
 WASM_EXPORT
 dv_formula_list* dv_get_available_formulas(const int8_t* target_unit) {
@@ -237,6 +267,7 @@ dv_formula_list* dv_get_available_formulas(const int8_t* target_unit) {
     list->names = (char**)malloc(sizeof(char*) * list->count);
     list->latexes = (char**)malloc(sizeof(char*) * list->count);
     list->categories = (char**)malloc(sizeof(char*) * list->count);
+    list->variables_json = (char**)malloc(sizeof(char*) * list->count);
 
     for (int i = 0; i < list->count; i++) {
         list->names[i] = (char*)malloc(formulas[i].name.length() + 1);
@@ -247,6 +278,10 @@ dv_formula_list* dv_get_available_formulas(const int8_t* target_unit) {
 
         list->categories[i] = (char*)malloc(formulas[i].category.length() + 1);
         strcpy(list->categories[i], formulas[i].category.c_str());
+
+        auto vars_json = variables_to_json(formulas[i].variables);
+        list->variables_json[i] = (char*)malloc(vars_json.length() + 1);
+        strcpy(list->variables_json[i], vars_json.c_str());
     }
 
     return list;
@@ -260,10 +295,12 @@ void dv_free_formula_list(dv_formula_list* list) {
         free(list->names[i]);
         free(list->latexes[i]);
         free(list->categories[i]);
+        free(list->variables_json[i]);
     }
     free(list->names);
     free(list->latexes);
     free(list->categories);
+    free(list->variables_json);
 
     free(list);
 }
@@ -309,6 +346,7 @@ dv_formula_list* dv_get_last_formula_results() {
     list->names = (char**)malloc(sizeof(char*) * list->count);
     list->latexes = (char**)malloc(sizeof(char*) * list->count);
     list->categories = (char**)malloc(sizeof(char*) * list->count);
+    list->variables_json = (char**)malloc(sizeof(char*) * list->count);
 
     for (int i = 0; i < list->count; i++) {
         list->names[i] = (char*)malloc(formulas[i].name.length() + 1);
@@ -319,6 +357,10 @@ dv_formula_list* dv_get_last_formula_results() {
 
         list->categories[i] = (char*)malloc(formulas[i].category.length() + 1);
         strcpy(list->categories[i], formulas[i].category.c_str());
+
+        auto vars_json = variables_to_json(formulas[i].variables);
+        list->variables_json[i] = (char*)malloc(vars_json.length() + 1);
+        strcpy(list->variables_json[i], vars_json.c_str());
     }
 
     return list;

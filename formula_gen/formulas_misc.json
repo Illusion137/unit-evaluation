@@ -1,0 +1,870 @@
+[
+    {
+        "name": "Ohm's Law",
+        "latex": "V = IR",
+        "variables": [
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage (potential difference)", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Electric current", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Resistance from Resistivity",
+        "latex": "R = \\frac{\\rho L}{A}",
+        "variables": [
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false },
+            { "name": "\\rho", "unit": [3, -3, 1, -2, 0, 0, 0], "description": "Resistivity", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of conductor", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Cross-sectional area", "constant": false }
+        ]
+    },
+    {
+        "name": "Current Density Definition",
+        "latex": "J = \\frac{I}{A}",
+        "variables": [
+            { "name": "J", "unit": [-2, 0, 0, 1, 0, 0, 0], "description": "Current density", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Electric current", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Cross-sectional area", "constant": false }
+        ]
+    },
+    {
+        "name": "Electric Field from Current Density and Resistivity",
+        "latex": "E = J \\rho",
+        "variables": [
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false },
+            { "name": "J", "unit": [-2, 0, 0, 1, 0, 0, 0], "description": "Current density", "constant": false },
+            { "name": "\\rho", "unit": [3, -3, 1, -2, 0, 0, 0], "description": "Resistivity", "constant": false }
+        ]
+    },
+    {
+        "name": "Current Density from Conductivity",
+        "latex": "J = \\sigma E",
+        "variables": [
+            { "name": "J", "unit": [-2, 0, 0, 1, 0, 0, 0], "description": "Current density", "constant": false },
+            { "name": "\\sigma", "unit": [-3, 3, -1, 2, 0, 0, 0], "description": "Electrical conductivity", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false }
+        ]
+    },
+    {
+        "name": "Conductivity and Resistivity Relationship",
+        "latex": "\\sigma = \\frac{1}{\\rho}",
+        "variables": [
+            { "name": "\\sigma", "unit": [-3, 3, -1, 2, 0, 0, 0], "description": "Electrical conductivity", "constant": false },
+            { "name": "\\rho", "unit": [3, -3, 1, -2, 0, 0, 0], "description": "Resistivity", "constant": false }
+        ]
+    },
+    {
+        "name": "Conductance Definition",
+        "latex": "G = \\frac{1}{R}",
+        "variables": [
+            { "name": "G", "unit": [-2, 3, -1, 2, 0, 0, 0], "description": "Conductance", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Resistivity Temperature Dependence",
+        "latex": "\\rho = \\rho_0 \\left[1 + \\alpha (T - T_0)\\right]",
+        "variables": [
+            { "name": "\\rho", "unit": [3, -3, 1, -2, 0, 0, 0], "description": "Resistivity at temperature T", "constant": false },
+            { "name": "\\rho_0", "unit": [3, -3, 1, -2, 0, 0, 0], "description": "Resistivity at reference temperature T_0", "constant": false },
+            { "name": "\\alpha", "unit": [0, 0, 0, 0, -1, 0, 0], "description": "Temperature coefficient of resistivity", "constant": false },
+            { "name": "T", "unit": [0, 0, 0, 0, 1, 0, 0], "description": "Temperature", "constant": false },
+            { "name": "T_0", "unit": [0, 0, 0, 0, 1, 0, 0], "description": "Reference temperature", "constant": false }
+        ]
+    },
+    {
+        "name": "Electric Power",
+        "latex": "P = IV",
+        "variables": [
+            { "name": "P", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Electric power", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Electric current", "constant": false },
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage", "constant": false }
+        ]
+    },
+    {
+        "name": "Power Dissipated in Resistor (Current Form)",
+        "latex": "P = I^2 R",
+        "variables": [
+            { "name": "P", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Power dissipated", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Electric current", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Power Dissipated in Resistor (Voltage Form)",
+        "latex": "P = \\frac{V^2}{R}",
+        "variables": [
+            { "name": "P", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Power dissipated", "constant": false },
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage across resistor", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Electrical Energy",
+        "latex": "U = P t",
+        "variables": [
+            { "name": "U", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Electrical energy dissipated", "constant": false },
+            { "name": "P", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Power", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "Charge from Current",
+        "latex": "q = I t",
+        "variables": [
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electric charge", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Electric current", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "EMF with Internal Resistance",
+        "latex": "V = \\varepsilon - I r",
+        "variables": [
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Terminal voltage", "constant": false },
+            { "name": "\\varepsilon", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force (EMF)", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Resistors in Series",
+        "latex": "R_{eq} = R_1 + R_2 + \\cdots + R_n",
+        "variables": [
+            { "name": "R_{eq}", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Equivalent resistance", "constant": false },
+            { "name": "R_1", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 1", "constant": false },
+            { "name": "R_2", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 2", "constant": false }
+        ]
+    },
+    {
+        "name": "Resistors in Parallel",
+        "latex": "\\frac{1}{R_{eq}} = \\frac{1}{R_1} + \\frac{1}{R_2} + \\cdots + \\frac{1}{R_n}",
+        "variables": [
+            { "name": "R_{eq}", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Equivalent resistance", "constant": false },
+            { "name": "R_1", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 1", "constant": false },
+            { "name": "R_2", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 2", "constant": false }
+        ]
+    },
+    {
+        "name": "Kirchhoff's Voltage Law (KVL)",
+        "latex": "\\sum V = 0",
+        "variables": [
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage across each element in a closed loop", "constant": false }
+        ]
+    },
+    {
+        "name": "Kirchhoff's Current Law (KCL)",
+        "latex": "\\sum I = 0",
+        "variables": [
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current at each branch of a node", "constant": false }
+        ]
+    },
+    {
+        "name": "Voltage Divider",
+        "latex": "V_x = V_{total} \\frac{R_x}{R_1 + R_2}",
+        "variables": [
+            { "name": "V_x", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage across resistor R_x", "constant": false },
+            { "name": "V_{total}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Total source voltage", "constant": false },
+            { "name": "R_x", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance of interest", "constant": false },
+            { "name": "R_1", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 1", "constant": false },
+            { "name": "R_2", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 2", "constant": false }
+        ]
+    },
+    {
+        "name": "Current Divider",
+        "latex": "I_x = I_{total} \\frac{R_{other}}{R_1 + R_2}",
+        "variables": [
+            { "name": "I_x", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current through branch of interest", "constant": false },
+            { "name": "I_{total}", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Total current entering node", "constant": false },
+            { "name": "R_{other}", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance of the other parallel branch", "constant": false },
+            { "name": "R_1", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 1", "constant": false },
+            { "name": "R_2", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance 2", "constant": false }
+        ]
+    },
+    {
+        "name": "Capacitor Charge-Voltage Relation",
+        "latex": "q = CV",
+        "variables": [
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge on capacitor", "constant": false },
+            { "name": "C", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance", "constant": false },
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage across capacitor", "constant": false }
+        ]
+    },
+    {
+        "name": "Energy Stored in a Capacitor",
+        "latex": "U = \\frac{1}{2} C V^2 = \\frac{q^2}{2C}",
+        "variables": [
+            { "name": "U", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Energy stored", "constant": false },
+            { "name": "C", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance", "constant": false },
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage across capacitor", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge on capacitor", "constant": false }
+        ]
+    },
+    {
+        "name": "RC Time Constant",
+        "latex": "\\tau = RC",
+        "variables": [
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "RC time constant", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false },
+            { "name": "C", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance", "constant": false }
+        ]
+    },
+    {
+        "name": "RC Circuit Charging (Charge)",
+        "latex": "q(t) = Q_{max}\\left(1 - e^{-t/\\tau}\\right)",
+        "variables": [
+            { "name": "q(t)", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge at time t", "constant": false },
+            { "name": "Q_{max}", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Maximum charge (= C·ε)", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "RC time constant", "constant": false }
+        ]
+    },
+    {
+        "name": "RC Circuit Discharging (Charge)",
+        "latex": "q(t) = Q_0 \\, e^{-t/\\tau}",
+        "variables": [
+            { "name": "q(t)", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge at time t", "constant": false },
+            { "name": "Q_0", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Initial charge on capacitor", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "RC time constant", "constant": false }
+        ]
+    },
+    {
+        "name": "RC Circuit Charging (Current)",
+        "latex": "I(t) = \\frac{\\varepsilon}{R} e^{-t/\\tau}",
+        "variables": [
+            { "name": "I(t)", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current at time t during charging", "constant": false },
+            { "name": "\\varepsilon", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of source", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "RC time constant", "constant": false }
+        ]
+    },
+    {
+        "name": "RL Time Constant",
+        "latex": "\\tau_L = \\frac{L}{R}",
+        "variables": [
+            { "name": "\\tau_L", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "RL time constant", "constant": false },
+            { "name": "L", "unit": [2, -2, 1, -2, 0, 0, 0], "description": "Inductance", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "RL Circuit Current Growth",
+        "latex": "I(t) = \\frac{\\varepsilon}{R}\\left(1 - e^{-t/\\tau_L}\\right)",
+        "variables": [
+            { "name": "I(t)", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current at time t", "constant": false },
+            { "name": "\\varepsilon", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false },
+            { "name": "\\tau_L", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "RL time constant", "constant": false }
+        ]
+    },
+    {
+        "name": "RL Circuit Current Decay",
+        "latex": "I(t) = I_0 \\, e^{-t/\\tau_L}",
+        "variables": [
+            { "name": "I(t)", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current at time t during decay", "constant": false },
+            { "name": "I_0", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Initial current", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false },
+            { "name": "\\tau_L", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "RL time constant", "constant": false }
+        ]
+    },
+    {
+        "name": "Energy Stored in an Inductor",
+        "latex": "U = \\frac{1}{2} L I^2",
+        "variables": [
+            { "name": "U", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Energy stored in inductor", "constant": false },
+            { "name": "L", "unit": [2, -2, 1, -2, 0, 0, 0], "description": "Inductance", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current through inductor", "constant": false }
+        ]
+    },
+    {
+        "name": "Annular Cross-Sectional Area",
+        "latex": "A = \\pi \\left(r_2^2 - r_1^2\\right)",
+        "variables": [
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Cross-sectional area of annular ring", "constant": false },
+            { "name": "r_2", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Outer radius", "constant": false },
+            { "name": "r_1", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Inner radius", "constant": false }
+        ]
+    },
+    {
+        "name": "Volume of a Cylinder",
+        "latex": "V_{vol} = A \\cdot L",
+        "variables": [
+            { "name": "V_{vol}", "unit": [3, 0, 0, 0, 0, 0, 0], "description": "Volume of cylinder", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Cross-sectional area", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length", "constant": false }
+        ]
+    },
+    {
+        "name": "Mass from Density",
+        "latex": "m = \\rho_{d} \\cdot V_{vol}",
+        "variables": [
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass", "constant": false },
+            { "name": "\\rho_{d}", "unit": [-3, 0, 1, 0, 0, 0, 0], "description": "Mass density", "constant": false },
+            { "name": "V_{vol}", "unit": [3, 0, 0, 0, 0, 0, 0], "description": "Volume", "constant": false }
+        ]
+    },
+    {
+        "name": "Heat of Transformation (Phase Change)",
+        "latex": "Q = L_v \\cdot m",
+        "variables": [
+            { "name": "Q", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Heat energy required for phase change", "constant": false },
+            { "name": "L_v", "unit": [2, -2, 0, 0, 0, 0, 0], "description": "Specific latent heat of vaporization", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of substance", "constant": false }
+        ]
+    },
+    {
+        "name": "Joule Heating Energy",
+        "latex": "Q = I^2 R \\, t",
+        "variables": [
+            { "name": "Q", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Heat energy generated", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Resistance", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time duration", "constant": false }
+        ]
+    },
+    {
+        "name": "Voltage from Electric Field and Length",
+        "latex": "V = E \\cdot d",
+        "variables": [
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Uniform electric field", "constant": false },
+            { "name": "d", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance between points", "constant": false }
+        ]
+    },
+    {
+        "name": "Drift Velocity of Charge Carriers",
+        "latex": "v_d = \\frac{J}{n q}",
+        "variables": [
+            { "name": "v_d", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Drift velocity", "constant": false },
+            { "name": "J", "unit": [-2, 0, 0, 1, 0, 0, 0], "description": "Current density", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Number density of charge carriers", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge per carrier", "constant": false }
+        ]
+    },
+    {
+        "name": "Current from Drift Velocity",
+        "latex": "I = n q v_d A",
+        "variables": [
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Number density of charge carriers", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge per carrier", "constant": false },
+            { "name": "v_d", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Drift velocity", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Cross-sectional area", "constant": false }
+        ]
+    },
+    {
+        "name": "Capacitors in Series",
+        "latex": "\\frac{1}{C_{eq}} = \\frac{1}{C_1} + \\frac{1}{C_2} + \\cdots",
+        "variables": [
+            { "name": "C_{eq}", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Equivalent capacitance", "constant": false },
+            { "name": "C_1", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance 1", "constant": false },
+            { "name": "C_2", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance 2", "constant": false }
+        ]
+    },
+    {
+        "name": "Capacitors in Parallel",
+        "latex": "C_{eq} = C_1 + C_2 + \\cdots",
+        "variables": [
+            { "name": "C_{eq}", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Equivalent capacitance", "constant": false },
+            { "name": "C_1", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance 1", "constant": false },
+            { "name": "C_2", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance 2", "constant": false }
+        ]
+    },
+    {
+        "name": "Parallel Plate Capacitance",
+        "latex": "C = \\frac{\\varepsilon_0 A}{d}",
+        "variables": [
+            { "name": "C", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance", "constant": false },
+            { "name": "\\varepsilon_0", "unit": [-3, 4, -1, 2, 0, 0, 0], "description": "Permittivity of free space", "constant": true },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Plate area", "constant": false },
+            { "name": "d", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Separation between plates", "constant": false }
+        ]
+    },
+    {
+        "name": "Capacitance with Dielectric",
+        "latex": "C = \\kappa \\frac{\\varepsilon_0 A}{d}",
+        "variables": [
+            { "name": "C", "unit": [-2, 4, -1, 2, 0, 0, 0], "description": "Capacitance", "constant": false },
+            { "name": "\\kappa", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Dielectric constant (relative permittivity)", "constant": false },
+            { "name": "\\varepsilon_0", "unit": [-3, 4, -1, 2, 0, 0, 0], "description": "Permittivity of free space", "constant": true },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Plate area", "constant": false },
+            { "name": "d", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Separation between plates", "constant": false }
+        ]
+    },
+    {
+        "name": "Biot-Savart Law (Differential Form)",
+        "latex": "d\\vec{B} = \\frac{\\mu_0 I}{4\\pi} \\frac{d\\vec{l} \\times \\hat{r}}{r^2}",
+        "variables": [
+            { "name": "d\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Differential magnetic field contribution", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in conductor", "constant": false },
+            { "name": "d\\vec{l}", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Differential length element of conductor", "constant": false },
+            { "name": "\\hat{r}", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Unit vector from element to field point", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance from element to field point", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field of an Infinite Straight Wire",
+        "latex": "B = \\frac{\\mu_0 I}{2\\pi r}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field magnitude", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Perpendicular distance from wire", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field at Center of Circular Loop",
+        "latex": "B = \\frac{\\mu_0 I}{2R}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field at center of loop", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in loop", "constant": false },
+            { "name": "R", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of loop", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field on Axis of Circular Loop",
+        "latex": "B = \\frac{\\mu_0 I R^2}{2(R^2 + x^2)^{3/2}}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field on axis", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in loop", "constant": false },
+            { "name": "R", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of loop", "constant": false },
+            { "name": "x", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Axial distance from center of loop", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field Inside a Solenoid",
+        "latex": "B = \\mu_0 n I",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field inside solenoid", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "n", "unit": [-1, 0, 0, 0, 0, 0, 0], "description": "Number of turns per unit length", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field Inside a Toroid",
+        "latex": "B = \\frac{\\mu_0 N I}{2\\pi r}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field inside toroid", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Total number of turns", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radial distance from center of toroid", "constant": false }
+        ]
+    },
+    {
+        "name": "Ampere's Law",
+        "latex": "\\oint \\vec{B} \\cdot d\\vec{l} = \\mu_0 I_{enc}",
+        "variables": [
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "d\\vec{l}", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Differential path element", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I_{enc}", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Total enclosed current", "constant": false }
+        ]
+    },
+    {
+        "name": "Gauss's Law for Magnetism",
+        "latex": "\\oint \\vec{B} \\cdot d\\vec{A} = 0",
+        "variables": [
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "d\\vec{A}", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Differential area element", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Flux",
+        "latex": "\\Phi_B = \\int \\vec{B} \\cdot d\\vec{A} = BA\\cos\\theta",
+        "variables": [
+            { "name": "\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Magnetic flux", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field magnitude", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area of surface", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between B and area normal", "constant": false }
+        ]
+    },
+    {
+        "name": "Faraday's Law of Induction",
+        "latex": "\\varepsilon = -\\frac{d\\Phi_B}{dt}",
+        "variables": [
+            { "name": "\\varepsilon", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF", "constant": false },
+            { "name": "\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Magnetic flux", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "Faraday's Law with N Turns",
+        "latex": "\\varepsilon = -N\\frac{d\\Phi_B}{dt}",
+        "variables": [
+            { "name": "\\varepsilon", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Magnetic flux through one turn", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "Lenz's Law (Induced Current Direction)",
+        "latex": "\\varepsilon_{induced} = -\\frac{d\\Phi_B}{dt}",
+        "variables": [
+            { "name": "\\varepsilon_{induced}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF (negative sign gives direction opposing change)", "constant": false },
+            { "name": "\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Magnetic flux", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "Motional EMF",
+        "latex": "\\varepsilon = BLv",
+        "variables": [
+            { "name": "\\varepsilon", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Motional EMF", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of conductor moving through field", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity of conductor", "constant": false }
+        ]
+    },
+    {
+        "name": "Self-Inductance Definition",
+        "latex": "\\varepsilon = -L \\frac{dI}{dt}",
+        "variables": [
+            { "name": "\\varepsilon", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF (back-EMF)", "constant": false },
+            { "name": "L", "unit": [2, -2, 1, -2, 0, 0, 0], "description": "Self-inductance", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "Inductance from Flux Linkage",
+        "latex": "L = \\frac{N \\Phi_B}{I}",
+        "variables": [
+            { "name": "L", "unit": [2, -2, 1, -2, 0, 0, 0], "description": "Inductance", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Magnetic flux through one turn", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false }
+        ]
+    },
+    {
+        "name": "Inductance of a Solenoid",
+        "latex": "L = \\mu_0 n^2 V_{vol} = \\frac{\\mu_0 N^2 A}{\\ell}",
+        "variables": [
+            { "name": "L", "unit": [2, -2, 1, -2, 0, 0, 0], "description": "Inductance of solenoid", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Total number of turns", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Cross-sectional area", "constant": false },
+            { "name": "\\ell", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of solenoid", "constant": false },
+            { "name": "n", "unit": [-1, 0, 0, 0, 0, 0, 0], "description": "Turn density (turns/length)", "constant": false },
+            { "name": "V_{vol}", "unit": [3, 0, 0, 0, 0, 0, 0], "description": "Volume of solenoid", "constant": false }
+        ]
+    },
+    {
+        "name": "Mutual Inductance",
+        "latex": "\\varepsilon_2 = -M \\frac{dI_1}{dt}",
+        "variables": [
+            { "name": "\\varepsilon_2", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Induced EMF in secondary coil", "constant": false },
+            { "name": "M", "unit": [2, -2, 1, -2, 0, 0, 0], "description": "Mutual inductance", "constant": false },
+            { "name": "I_1", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in primary coil", "constant": false },
+            { "name": "t", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Time", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field Inside a Solenoid with Core",
+        "latex": "B = \\mu_0 \\mu_r n I",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "\\mu_r", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Relative permeability of core material", "constant": false },
+            { "name": "n", "unit": [-1, 0, 0, 0, 0, 0, 0], "description": "Turn density", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Energy Density",
+        "latex": "u_B = \\frac{B^2}{2\\mu_0}",
+        "variables": [
+            { "name": "u_B", "unit": [-1, -2, 1, 0, 0, 0, 0], "description": "Magnetic energy density", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true }
+        ]
+    },
+    {
+        "name": "Magnetic Field of a Finite Straight Wire",
+        "latex": "B = \\frac{\\mu_0 I}{4\\pi r}(\\sin\\theta_1 + \\sin\\theta_2)",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Perpendicular distance from wire", "constant": false },
+            { "name": "\\theta_1", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle to one end of wire", "constant": false },
+            { "name": "\\theta_2", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle to other end of wire", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Field Inside a Thick Wire (r < R)",
+        "latex": "B = \\frac{\\mu_0 I r}{2\\pi R^2}",
+        "variables": [
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field at radius r inside wire", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Total current", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radial distance from axis (r < R)", "constant": false },
+            { "name": "R", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of wire", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on a Moving Charge (Vector Form)",
+        "latex": "\\vec{F} = q \\vec{v} \\times \\vec{B}",
+        "variables": [
+            { "name": "\\vec{F}", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force on charge", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electric charge", "constant": false },
+            { "name": "\\vec{v}", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity of charge", "constant": false },
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on a Moving Charge (Scalar)",
+        "latex": "F = |q| v B \\sin\\theta",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force magnitude", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electric charge", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Speed of charge", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field magnitude", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between v and B", "constant": false }
+        ]
+    },
+    {
+        "name": "Lorentz Force (Electric + Magnetic)",
+        "latex": "\\vec{F} = q(\\vec{E} + \\vec{v} \\times \\vec{B})",
+        "variables": [
+            { "name": "\\vec{F}", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Total electromagnetic force", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electric charge", "constant": false },
+            { "name": "\\vec{E}", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false },
+            { "name": "\\vec{v}", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity of charge", "constant": false },
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Radius",
+        "latex": "r = \\frac{mv}{|q|B}",
+        "variables": [
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of circular orbit", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of charged particle", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Speed of particle", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge of particle", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Period",
+        "latex": "T = \\frac{2\\pi m}{|q| B}",
+        "variables": [
+            { "name": "T", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Period of circular orbit", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of particle", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge of particle", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Frequency",
+        "latex": "f = \\frac{|q| B}{2\\pi m}",
+        "variables": [
+            { "name": "f", "unit": [0, -1, 0, 0, 0, 0, 0], "description": "Cyclotron frequency", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge of particle", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of particle", "constant": false }
+        ]
+    },
+    {
+        "name": "Cyclotron Angular Frequency",
+        "latex": "\\omega = \\frac{|q| B}{m}",
+        "variables": [
+            { "name": "\\omega", "unit": [0, -1, 0, 0, 0, 0, 0], "description": "Cyclotron angular frequency", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge of particle", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of particle", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on a Current-Carrying Wire (Vector)",
+        "latex": "\\vec{F} = I \\vec{L} \\times \\vec{B}",
+        "variables": [
+            { "name": "\\vec{F}", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force on wire", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in wire", "constant": false },
+            { "name": "\\vec{L}", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length vector of wire (in current direction)", "constant": false },
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on a Current-Carrying Wire (Scalar)",
+        "latex": "F = B I L \\sin\\theta",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Magnetic force magnitude", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "L", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Length of wire in field", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between wire and B", "constant": false }
+        ]
+    },
+    {
+        "name": "Force per Unit Length Between Parallel Wires",
+        "latex": "\\frac{F}{L} = \\frac{\\mu_0 I_1 I_2}{2\\pi d}",
+        "variables": [
+            { "name": "F/L", "unit": [0, -2, 1, 0, 0, 0, 0], "description": "Force per unit length between wires", "constant": false },
+            { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
+            { "name": "I_1", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in wire 1", "constant": false },
+            { "name": "I_2", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in wire 2", "constant": false },
+            { "name": "d", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Distance between wires", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Dipole Moment",
+        "latex": "\\mu = N I A",
+        "variables": [
+            { "name": "\\mu", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns in loop", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in loop", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area of loop", "constant": false }
+        ]
+    },
+    {
+        "name": "Torque on a Magnetic Dipole (Vector)",
+        "latex": "\\vec{\\tau} = \\vec{\\mu} \\times \\vec{B}",
+        "variables": [
+            { "name": "\\vec{\\tau}", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Torque on magnetic dipole", "constant": false },
+            { "name": "\\vec{\\mu}", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment", "constant": false },
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Torque on a Current Loop (Scalar)",
+        "latex": "\\tau = N I A B \\sin\\theta",
+        "variables": [
+            { "name": "\\tau", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Torque on current loop", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area of loop", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between magnetic moment and B", "constant": false }
+        ]
+    },
+    {
+        "name": "Potential Energy of Magnetic Dipole in Field",
+        "latex": "U = -\\vec{\\mu} \\cdot \\vec{B} = -\\mu B \\cos\\theta",
+        "variables": [
+            { "name": "U", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Potential energy of dipole", "constant": false },
+            { "name": "\\vec{\\mu}", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment", "constant": false },
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between μ and B", "constant": false }
+        ]
+    },
+    {
+        "name": "Hall Voltage",
+        "latex": "V_H = \\frac{I B}{n q t}",
+        "variables": [
+            { "name": "V_H", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Hall voltage", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current through conductor", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Charge carrier number density", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge per carrier", "constant": false },
+            { "name": "t", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Thickness of conductor in B direction", "constant": false }
+        ]
+    },
+    {
+        "name": "Hall Coefficient",
+        "latex": "R_H = \\frac{1}{nq}",
+        "variables": [
+            { "name": "R_H", "unit": [3, -1, 0, -1, 0, 0, 0], "description": "Hall coefficient", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Charge carrier number density", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge per carrier", "constant": false }
+        ]
+    },
+    {
+        "name": "Velocity Selector Condition",
+        "latex": "v = \\frac{E}{B}",
+        "variables": [
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Selected particle velocity (F_E = F_B)", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Pitch of Helical Motion in Magnetic Field",
+        "latex": "p = v_{\\parallel} T = \\frac{2\\pi m v_{\\parallel}}{|q| B}",
+        "variables": [
+            { "name": "p", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Pitch of helix (distance along B per revolution)", "constant": false },
+            { "name": "v_{\\parallel}", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity component parallel to B", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of particle", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge of particle", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "T", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Cyclotron period", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Force on a Differential Current Element",
+        "latex": "d\\vec{F} = I \\, d\\vec{l} \\times \\vec{B}",
+        "variables": [
+            { "name": "d\\vec{F}", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Differential magnetic force", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "d\\vec{l}", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Differential length element (in current direction)", "constant": false },
+            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Kinetic Energy of Particle in Cyclotron",
+        "latex": "K = \\frac{q^2 B^2 r^2}{2m}",
+        "variables": [
+            { "name": "K", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Kinetic energy of particle", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge of particle", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Orbital radius", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of particle", "constant": false }
+        ]
+    },
+    {
+        "name": "Mass Spectrometer Radius",
+        "latex": "r = \\frac{mv}{qB} = \\frac{m}{qB}\\sqrt{\\frac{2qV}{m}} = \\frac{\\sqrt{2mV/q}}{B}",
+        "variables": [
+            { "name": "r", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Radius of circular path in mass spectrometer", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Mass of ion", "constant": false },
+            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Accelerating voltage", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge of ion", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false }
+        ]
+    },
+    {
+        "name": "Work Done by Magnetic Force on Moving Charge",
+        "latex": "W = 0",
+        "variables": [
+            { "name": "W", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Work done by magnetic force (always zero — B is perpendicular to v)", "constant": false }
+        ]
+    },
+    {
+        "name": "Magnetic Flux Through a Loop",
+        "latex": "\\Phi_B = NBA\\cos\\theta",
+        "variables": [
+            { "name": "\\Phi_B", "unit": [2, -2, 1, -1, 0, 0, 0], "description": "Total magnetic flux linkage", "constant": false },
+            { "name": "N", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Number of turns", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "A", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Area of each loop", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between B and area normal", "constant": false }
+        ]
+    },
+    {
+        "name": "Electric Field in a Moving Conductor (Motional EMF per Length)",
+        "latex": "\\frac{\\varepsilon}{L} = vB\\sin\\theta",
+        "variables": [
+            { "name": "\\varepsilon/L", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "EMF per unit length (equivalent to E field along conductor)", "constant": false },
+            { "name": "v", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Velocity of conductor", "constant": false },
+            { "name": "B", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
+            { "name": "\\theta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Angle between v and B", "constant": false }
+        ]
+    },
+    {
+        "name": "Force on a Magnetic Dipole in Non-Uniform Field",
+        "latex": "F = \\mu \\frac{dB}{dz}",
+        "variables": [
+            { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Force on magnetic dipole", "constant": false },
+            { "name": "\\mu", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment magnitude", "constant": false },
+            { "name": "dB/dz", "unit": [-1, -2, 1, -1, 0, 0, 0], "description": "Gradient of magnetic field along z-axis", "constant": false }
+        ]
+    }
+]

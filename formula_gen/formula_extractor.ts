@@ -21,6 +21,7 @@ import formulas_thermodynamics from "./formulas_thermodynamics.json"
 import formulas_dc_circuits from "./formulas_dc_circuits.json"
 import formulas_geometry from "./formulas_geometry.json"
 import formulas_magnetism from "./formulas_magnetism.json"
+import formulas_misc from "./formulas_misc.json"
 
 function parse_pushbacks_to_json(input: string): (typeof formulas_dynamics[0])[] {
     const results: (typeof formulas_dynamics[0])[] = [];
@@ -187,6 +188,7 @@ const formlua_list = [
     ...formulas_dc_circuits,
     ...formulas_geometry,
     ...formulas_magnetism,
+    ...formulas_misc,
     ...parse_pushbacks_to_json(fs.readFileSync("./formula_gen/ALL.txt").toString("utf-8"))
 ];
 

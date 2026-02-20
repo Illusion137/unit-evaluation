@@ -146,20 +146,6 @@
         ]
     },
     {
-        "name": "Kirchhoff's Voltage Law (KVL)",
-        "latex": "\\sum V = 0",
-        "variables": [
-            { "name": "V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Voltage across each element in a closed loop", "constant": false }
-        ]
-    },
-    {
-        "name": "Kirchhoff's Current Law (KCL)",
-        "latex": "\\sum I = 0",
-        "variables": [
-            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current at each branch of a node", "constant": false }
-        ]
-    },
-    {
         "name": "Voltage Divider",
         "latex": "V_x = V_{total} \\frac{R_x}{R_1 + R_2}",
         "variables": [
@@ -466,14 +452,6 @@
             { "name": "d\\vec{l}", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Differential path element", "constant": false },
             { "name": "\\mu_0", "unit": [1, -2, 1, -2, 0, 0, 0], "description": "Permeability of free space", "constant": true },
             { "name": "I_{enc}", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Total enclosed current", "constant": false }
-        ]
-    },
-    {
-        "name": "Gauss's Law for Magnetism",
-        "latex": "\\oint \\vec{B} \\cdot d\\vec{A} = 0",
-        "variables": [
-            { "name": "\\vec{B}", "unit": [0, -2, 1, -1, 0, 0, 0], "description": "Magnetic field", "constant": false },
-            { "name": "d\\vec{A}", "unit": [2, 0, 0, 0, 0, 0, 0], "description": "Differential area element", "constant": false }
         ]
     },
     {
@@ -831,13 +809,6 @@
         ]
     },
     {
-        "name": "Work Done by Magnetic Force on Moving Charge",
-        "latex": "W = 0",
-        "variables": [
-            { "name": "W", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Work done by magnetic force (always zero — B is perpendicular to v)", "constant": false }
-        ]
-    },
-    {
         "name": "Magnetic Flux Through a Loop",
         "latex": "\\Phi_B = NBA\\cos\\theta",
         "variables": [
@@ -865,6 +836,309 @@
             { "name": "F", "unit": [1, -2, 1, 0, 0, 0, 0], "description": "Force on magnetic dipole", "constant": false },
             { "name": "\\mu", "unit": [2, 0, 0, 1, 0, 0, 0], "description": "Magnetic dipole moment magnitude", "constant": false },
             { "name": "dB/dz", "unit": [-1, -2, 1, -1, 0, 0, 0], "description": "Gradient of magnetic field along z-axis", "constant": false }
+        ]
+    },
+    {
+        "name": "EMF Definition (Work per Charge)",
+        "latex": "E = \\frac{dW}{dq}",
+        "variables": [
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force (EMF)", "constant": false },
+            { "name": "dW", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Differential work done on charge", "constant": false },
+            { "name": "dq", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Differential charge moved", "constant": false }
+        ]
+    },
+    {
+        "name": "Work Done by EMF Source on Charge",
+        "latex": "W_n = q E",
+        "variables": [
+            { "name": "W_n", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Work done by EMF source on charge q", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge moved through EMF source", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Electromotive force", "constant": false }
+        ]
+    },
+    {
+        "name": "Terminal Voltage of Ideal EMF Source",
+        "latex": "V_{ab} = E",
+        "variables": [
+            { "name": "V_{ab}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Terminal voltage of ideal source (no internal resistance)", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of source", "constant": false }
+        ]
+    },
+    {
+        "name": "Terminal Voltage with Internal Resistance (Discharging)",
+        "latex": "V_{ab} = E - Ir",
+        "variables": [
+            { "name": "V_{ab}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Terminal voltage of source", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of source", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current through source", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance of source", "constant": false }
+        ]
+    },
+    {
+        "name": "Terminal Voltage with Internal Resistance (Charging)",
+        "latex": "V_{ab} = E + Ir",
+        "variables": [
+            { "name": "V_{ab}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Terminal voltage when source is being charged", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of source", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current driven into source (charging current)", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance of source", "constant": false }
+        ]
+    },
+    {
+        "name": "KVL with EMF and Internal Resistance",
+        "latex": "E - Ir - IR = 0",
+        "variables": [
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in loop", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "External resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Current in a Simple EMF Circuit",
+        "latex": "I = \\frac{E}{R + r}",
+        "variables": [
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current in circuit", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of source", "constant": false },
+            { "name": "R", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "External resistance", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Differential Charge from Current",
+        "latex": "dq = I \\, dt",
+        "variables": [
+            { "name": "dq", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Differential charge", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "dt", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Differential time interval", "constant": false }
+        ]
+    },
+    {
+        "name": "Change in Potential Energy of Charge Through Potential Drop",
+        "latex": "dU = dq \\cdot V_{ab} = I \\, V_{ab} \\, dt",
+        "variables": [
+            { "name": "dU", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Change in electric potential energy", "constant": false },
+            { "name": "dq", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Differential charge", "constant": false },
+            { "name": "V_{ab}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Potential difference", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "dt", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Differential time", "constant": false }
+        ]
+    },
+    {
+        "name": "Power Delivered to External Circuit by EMF Source",
+        "latex": "P = E I",
+        "variables": [
+            { "name": "P", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Rate at which EMF source delivers energy to circuit", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false }
+        ]
+    },
+    {
+        "name": "Power Output of EMF Source (Net to External Circuit)",
+        "latex": "P_{out} = E I - I^2 r",
+        "variables": [
+            { "name": "P_{out}", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Net power delivered to external circuit", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Power Dissipated in Internal Resistance",
+        "latex": "P_r = I^2 r",
+        "variables": [
+            { "name": "P_r", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Power lost as heat inside source", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Power Input to EMF Source Being Charged",
+        "latex": "P_{in} = E I + I^2 r",
+        "variables": [
+            { "name": "P_{in}", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Total electrical power input when charging source", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of source being charged", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Charging current", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Power Output from Terminal Voltage",
+        "latex": "P = V_{ab} I",
+        "variables": [
+            { "name": "P", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Power delivered to load", "constant": false },
+            { "name": "V_{ab}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Terminal voltage", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false }
+        ]
+    },
+    {
+        "name": "Efficiency of EMF Source",
+        "latex": "\\eta = \\frac{P_{out}}{P_{total}} = \\frac{E I - I^2 r}{E I} = 1 - \\frac{Ir}{E}",
+        "variables": [
+            { "name": "\\eta", "unit": [0, 0, 0, 0, 0, 0, 0], "description": "Efficiency of source (dimensionless)", "constant": false },
+            { "name": "P_{out}", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Power to external circuit", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Maximum Power Transfer Condition",
+        "latex": "R_{load} = r",
+        "variables": [
+            { "name": "R_{load}", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "External load resistance for maximum power transfer", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance of source", "constant": false }
+        ]
+    },
+    {
+        "name": "Maximum Power Delivered to External Load",
+        "latex": "P_{max} = \\frac{E^2}{4r}",
+        "variables": [
+            { "name": "P_{max}", "unit": [2, -3, 1, 0, 0, 0, 0], "description": "Maximum power deliverable to external load", "constant": false },
+            { "name": "E", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of source", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance of source", "constant": false }
+        ]
+    },
+    {
+        "name": "Drude Model: Electron Acceleration in E Field",
+        "latex": "a = \\frac{qE}{m}",
+        "variables": [
+            { "name": "a", "unit": [1, -2, 0, 0, 0, 0, 0], "description": "Acceleration of electron in electric field", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electron charge magnitude", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Electron mass", "constant": false }
+        ]
+    },
+    {
+        "name": "Drift Velocity from Mean Free Time",
+        "latex": "v_d = \\frac{q \\tau}{m} E",
+        "variables": [
+            { "name": "v_d", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Drift velocity of electrons", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electron charge magnitude", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Mean free time between collisions", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Electron mass", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false }
+        ]
+    },
+    {
+        "name": "Current Density from Drude Model",
+        "latex": "J = \\frac{n q^2 \\tau}{m} E",
+        "variables": [
+            { "name": "J", "unit": [-2, 0, 0, 1, 0, 0, 0], "description": "Current density", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Number density of conduction electrons", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electron charge magnitude", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Mean free time between collisions", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Electron mass", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false }
+        ]
+    },
+    {
+        "name": "Resistivity from Drude Model",
+        "latex": "\\rho = \\frac{m}{n e^2 \\tau}",
+        "variables": [
+            { "name": "\\rho", "unit": [3, -3, 1, -2, 0, 0, 0], "description": "Electrical resistivity of metal", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Electron mass", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Number density of conduction electrons", "constant": false },
+            { "name": "e", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Elementary charge", "constant": true },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Mean free time between electron collisions", "constant": false }
+        ]
+    },
+    {
+        "name": "Conductivity from Drude Model",
+        "latex": "\\sigma = \\frac{n e^2 \\tau}{m}",
+        "variables": [
+            { "name": "\\sigma", "unit": [-3, 3, -1, 2, 0, 0, 0], "description": "Electrical conductivity", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Number density of conduction electrons", "constant": false },
+            { "name": "e", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Elementary charge", "constant": true },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Mean free time between collisions", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Electron mass", "constant": false }
+        ]
+    },
+    {
+        "name": "Electron Velocity at Time t After Collision (Drude)",
+        "latex": "v(t) = v_0 + \\frac{qE}{m} \\tau",
+        "variables": [
+            { "name": "v(t)", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Electron velocity just before next collision", "constant": false },
+            { "name": "v_0", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Electron velocity just after previous collision (random)", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electron charge magnitude", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Electron mass", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Mean free time", "constant": false }
+        ]
+    },
+    {
+        "name": "Mean Free Path",
+        "latex": "\\lambda = v_F \\tau",
+        "variables": [
+            { "name": "\\lambda", "unit": [1, 0, 0, 0, 0, 0, 0], "description": "Mean free path of electrons", "constant": false },
+            { "name": "v_F", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Fermi velocity (average thermal speed of electrons)", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Mean free time between collisions", "constant": false }
+        ]
+    },
+    {
+        "name": "Mobility of Charge Carriers",
+        "latex": "\\mu_e = \\frac{|q| \\tau}{m} = \\frac{v_d}{E}",
+        "variables": [
+            { "name": "\\mu_e", "unit": [0, 2, -1, 1, 0, 0, 0], "description": "Electron mobility", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Electron charge magnitude", "constant": false },
+            { "name": "\\tau", "unit": [0, 1, 0, 0, 0, 0, 0], "description": "Mean free time", "constant": false },
+            { "name": "m", "unit": [0, 0, 1, 0, 0, 0, 0], "description": "Electron mass", "constant": false },
+            { "name": "v_d", "unit": [1, -1, 0, 0, 0, 0, 0], "description": "Drift velocity", "constant": false },
+            { "name": "E", "unit": [1, -3, 1, -1, 0, 0, 0], "description": "Electric field", "constant": false }
+        ]
+    },
+    {
+        "name": "Conductivity from Mobility",
+        "latex": "\\sigma = n q \\mu_e",
+        "variables": [
+            { "name": "\\sigma", "unit": [-3, 3, -1, 2, 0, 0, 0], "description": "Electrical conductivity", "constant": false },
+            { "name": "n", "unit": [-3, 0, 0, 0, 0, 0, 0], "description": "Charge carrier density", "constant": false },
+            { "name": "q", "unit": [0, 1, 0, 1, 0, 0, 0], "description": "Charge per carrier", "constant": false },
+            { "name": "\\mu_e", "unit": [0, 2, -1, 1, 0, 0, 0], "description": "Carrier mobility", "constant": false }
+        ]
+    },
+    {
+        "name": "Potential Drop Across Internal Resistance",
+        "latex": "\\Delta V_r = -Ir",
+        "variables": [
+            { "name": "\\Delta V_r", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Potential drop across internal resistance", "constant": false },
+            { "name": "I", "unit": [0, 0, 0, 1, 0, 0, 0], "description": "Current", "constant": false },
+            { "name": "r", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance", "constant": false }
+        ]
+    },
+    {
+        "name": "Net Change in Potential Around a Loop (KVL)",
+        "latex": "\\Delta U_{net} = \\sum \\Delta V = 0",
+        "variables": [
+            { "name": "\\Delta U_{net}", "unit": [2, -2, 1, 0, 0, 0, 0], "description": "Net change in potential energy around a closed loop", "constant": false },
+            { "name": "\\Delta V", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Potential change across each element", "constant": false }
+        ]
+    },
+    {
+        "name": "EMFs in Series (Aiding)",
+        "latex": "E_{total} = E_1 + E_2",
+        "variables": [
+            { "name": "E_{total}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Total EMF of series combination", "constant": false },
+            { "name": "E_1", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of first source", "constant": false },
+            { "name": "E_2", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "EMF of second source", "constant": false }
+        ]
+    },
+    {
+        "name": "EMFs in Series (Opposing)",
+        "latex": "E_{total} = E_1 - E_2",
+        "variables": [
+            { "name": "E_{total}", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Net EMF when sources oppose each other", "constant": false },
+            { "name": "E_1", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Larger EMF", "constant": false },
+            { "name": "E_2", "unit": [2, -3, 1, -1, 0, 0, 0], "description": "Smaller opposing EMF", "constant": false }
+        ]
+    },
+    {
+        "name": "Total Internal Resistance of Batteries in Series",
+        "latex": "r_{total} = r_1 + r_2 + \\cdots",
+        "variables": [
+            { "name": "r_{total}", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Total internal resistance", "constant": false },
+            { "name": "r_1", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance of source 1", "constant": false },
+            { "name": "r_2", "unit": [2, -3, 1, -2, 0, 0, 0], "description": "Internal resistance of source 2", "constant": false }
         ]
     }
 ]

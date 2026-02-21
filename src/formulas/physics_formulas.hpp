@@ -29,6 +29,27 @@ public:
     
 private:
     std::vector<Formula> formulas;
+    void batch_0();
+    void batch_1();
+    void batch_2();
+    void batch_3();
+    void batch_4();
+    void batch_5();
+    void batch_6();
+    void batch_7();
+    void batch_8();
+    void batch_9();
+    void batch_10();
+    void batch_11();
+    void batch_12();
+    void batch_13();
+    void batch_14();
+    void batch_15();
+    void batch_16();
+    void batch_17();
+    void batch_18();
+    void batch_19();
+    void batch_20();
 };
 
 } // namespace Physics

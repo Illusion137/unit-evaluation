@@ -32,6 +32,7 @@ namespace dv {
         MaybeEValue evaluate(dv::Evaluator &evalulator);
         MaybeEValue evaluate(const AST *ast, dv::Evaluator &evalulator);
         MaybeEValue evaluate(const std::unique_ptr<AST> &ast, dv::Evaluator &evalulator);
+        std::unique_ptr<AST> clone() const;
         std::string to_string(const std::uint16_t depth = 0) const noexcept;
     };
 }

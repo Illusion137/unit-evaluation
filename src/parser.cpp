@@ -31,6 +31,16 @@ static std::string describe_token(const dv::Token& token) {
         case dv::TokenType::RIGHT_ABSOLUTE_BAR: return "'\\right|'";
         case dv::TokenType::COMMA: return "','";
         case dv::TokenType::SUBSCRIPT: return "'_'";
+        case dv::TokenType::PLUS_MINUS: return "'\\pm'";
+        case dv::TokenType::LESS_THAN: return "'<'";
+        case dv::TokenType::GREATER_THAN: return "'>'";
+        case dv::TokenType::LESS_EQUAL: return "'\\leq'";
+        case dv::TokenType::GREATER_EQUAL: return "'\\geq'";
+        case dv::TokenType::LOGICAL_AND: return "'\\land'";
+        case dv::TokenType::LOGICAL_OR: return "'\\lor'";
+        case dv::TokenType::LOGICAL_NOT: return "'\\lnot'";
+        case dv::TokenType::MODULO: return "'\\mod'";
+        case dv::TokenType::PERCENT: return "'\\%'";
         default: {
             if(!token.text.empty()) return std::format("'{}'", token.text);
             return "unknown token";
@@ -69,6 +79,16 @@ std::int32_t dv::Parser::builtin_function_args(dv::TokenType type){
         case dv::TokenType::BUILTIN_FUNC_ARCCOT: return 1;
         case dv::TokenType::BUILTIN_FUNC_VALUE: return 1;
         case dv::TokenType::BUILTIN_FUNC_UNIT: return 1;
+        case dv::TokenType::BUILTIN_FUNC_SIG: return 1;
+        case dv::TokenType::BUILTIN_FUNC_DET: return 1;
+        case dv::TokenType::BUILTIN_FUNC_TRACE: return 1;
+        case dv::TokenType::BUILTIN_FUNC_RE: return 1;
+        case dv::TokenType::BUILTIN_FUNC_IM: return 1;
+        case dv::TokenType::BUILTIN_FUNC_CONJ: return 1;
+        case dv::TokenType::BUILTIN_FUNC_MIN: return -2; // variadic, at least 2
+        case dv::TokenType::BUILTIN_FUNC_MAX: return -2;
+        case dv::TokenType::BUILTIN_FUNC_GCD: return -2;
+        case dv::TokenType::BUILTIN_FUNC_LCM: return -2;
         default: return 0;
     }
 }
@@ -77,13 +97,25 @@ std::pair<std::int32_t, std::int32_t> dv::Parser::precedence(dv::TokenType type)
     switch (type) {
         case dv::TokenType::EQUAL:
             return { 1, 1 };
+        case dv::TokenType::LOGICAL_OR:
+            return { 2, 3 };
+        case dv::TokenType::LOGICAL_AND:
+            return { 4, 5 };
+        case dv::TokenType::LESS_THAN:
+        case dv::TokenType::GREATER_THAN:
+        case dv::TokenType::LESS_EQUAL:
+        case dv::TokenType::GREATER_EQUAL:
+            return { 6, 7 };
         case dv::TokenType::PLUS:
         case dv::TokenType::MINUS:
+        case dv::TokenType::PLUS_MINUS:
             return { 10, 11 };
         case dv::TokenType::TIMES:
         case dv::TokenType::DIVIDE:
+        case dv::TokenType::MODULO:
             return { 20, 21 };
         case dv::TokenType::FACTORIAL:
+        case dv::TokenType::PERCENT:
             return { 20, 25 };
         case dv::TokenType::EXPONENT:
             return { 31, 30 };
@@ -98,6 +130,8 @@ bool dv::Parser::is_atom(dv::TokenType type) {
         case dv::TokenType::ABSOLUTE_BAR:
         case dv::TokenType::FRACTION:
         case dv::TokenType::FORMULA_QUERY:
+        case dv::TokenType::PIECEWISE_BEGIN:
+        case dv::TokenType::MATRIX_BEGIN:
             return true;
         default: return is_builtin_function(type);
     }
@@ -111,6 +145,14 @@ bool dv::Parser::is_binop(dv::TokenType type) {
         case dv::TokenType::DIVIDE:
         case dv::TokenType::EXPONENT:
         case dv::TokenType::EQUAL:
+        case dv::TokenType::PLUS_MINUS:
+        case dv::TokenType::LESS_THAN:
+        case dv::TokenType::GREATER_THAN:
+        case dv::TokenType::LESS_EQUAL:
+        case dv::TokenType::GREATER_EQUAL:
+        case dv::TokenType::LOGICAL_AND:
+        case dv::TokenType::LOGICAL_OR:
+        case dv::TokenType::MODULO:
             return true;
         default: return false;
     }
@@ -142,6 +184,19 @@ bool dv::Parser::is_builtin_function(dv::TokenType type){
         case dv::TokenType::BUILTIN_FUNC_ARCCOT:
         case dv::TokenType::BUILTIN_FUNC_VALUE:
         case dv::TokenType::BUILTIN_FUNC_UNIT:
+        case dv::TokenType::BUILTIN_FUNC_SUM:
+        case dv::TokenType::BUILTIN_FUNC_PROD:
+        case dv::TokenType::BUILTIN_FUNC_INT:
+        case dv::TokenType::BUILTIN_FUNC_MIN:
+        case dv::TokenType::BUILTIN_FUNC_MAX:
+        case dv::TokenType::BUILTIN_FUNC_GCD:
+        case dv::TokenType::BUILTIN_FUNC_LCM:
+        case dv::TokenType::BUILTIN_FUNC_SIG:
+        case dv::TokenType::BUILTIN_FUNC_DET:
+        case dv::TokenType::BUILTIN_FUNC_TRACE:
+        case dv::TokenType::BUILTIN_FUNC_RE:
+        case dv::TokenType::BUILTIN_FUNC_IM:
+        case dv::TokenType::BUILTIN_FUNC_CONJ:
             return true;
         default: return false;
     }
@@ -151,6 +206,7 @@ bool dv::Parser::is_unary_prefix_op(dv::TokenType type){
     switch (type) {
         case dv::TokenType::PLUS:
         case dv::TokenType::MINUS:
+        case dv::TokenType::LOGICAL_NOT:
             return true;
         default: return false;
     }
@@ -159,6 +215,7 @@ bool dv::Parser::is_unary_prefix_op(dv::TokenType type){
 bool dv::Parser::is_unary_postfix_op(dv::TokenType type){
     switch (type) {
         case dv::TokenType::FACTORIAL:
+        case dv::TokenType::PERCENT:
             return true;
         default: return false;
     }
@@ -216,6 +273,112 @@ dv::MaybeAST dv::Parser::match_parentheses(){
 }
 
 dv::MaybeAST dv::Parser::match_fraction(const dv::Token &token){
+    // Check for derivative pattern: \frac{d}{dx} or \frac{d^n}{dx^n}
+    // Save position to potentially backtrack
+    auto saved_pos = position;
+
+    if(peek().type == TokenType::LEFT_CURLY_BRACKET) {
+        // Look ahead to see if this is a derivative
+        auto test_pos = position + 1;
+        if(test_pos < tokens.size() && tokens[test_pos].type == TokenType::IDENTIFIER && tokens[test_pos].text == "d") {
+            // Could be \frac{d}{dx} or \frac{d^n}{dx^n}
+            auto test_pos2 = test_pos + 1;
+            bool is_derivative = false;
+            int deriv_order = 1;
+
+            // Check for \frac{d}{d...} pattern
+            if(test_pos2 < tokens.size() && tokens[test_pos2].type == TokenType::RIGHT_CURLY_BRACKET) {
+                // Simple \frac{d}{dx}
+                auto test_pos3 = test_pos2 + 1;
+                if(test_pos3 < tokens.size() && tokens[test_pos3].type == TokenType::LEFT_CURLY_BRACKET) {
+                    auto test_pos4 = test_pos3 + 1;
+                    if(test_pos4 < tokens.size() && tokens[test_pos4].type == TokenType::IDENTIFIER && tokens[test_pos4].text == "d") {
+                        is_derivative = true;
+                    }
+                }
+            }
+            // Check for \frac{d^n}{dx^n} pattern
+            else if(test_pos2 < tokens.size() && tokens[test_pos2].type == TokenType::EXPONENT) {
+                is_derivative = true; // we'll parse the order
+            }
+
+            if(is_derivative) {
+                // Parse \frac{d or d^n}{d var or d var^n}
+                match(TokenType::LEFT_CURLY_BRACKET);
+                next(); // consume 'd'
+                if(peek().type == TokenType::EXPONENT) {
+                    next(); // consume '^'
+                    if(peek().type == TokenType::LEFT_CURLY_BRACKET) {
+                        auto order_ast = match_curly_bracket();
+                        if(order_ast) {
+                            // For now just support numeric order
+                            if(order_ast.value()->token.type == TokenType::NUMERIC_LITERAL) {
+                                deriv_order = (int)order_ast.value()->token.value.value;
+                            }
+                        }
+                    } else if(peek().type == TokenType::NUMERIC_LITERAL) {
+                        deriv_order = (int)next().value.value;
+                    }
+                }
+                if(!match(TokenType::RIGHT_CURLY_BRACKET)) {
+                    // backtrack
+                    position = saved_pos;
+                    goto normal_fraction;
+                }
+                // Parse denominator {dx} or {dx^n}
+                if(!match(TokenType::LEFT_CURLY_BRACKET)) {
+                    position = saved_pos;
+                    goto normal_fraction;
+                }
+                // Consume 'd'
+                if(peek().type != TokenType::IDENTIFIER || peek().text != "d") {
+                    position = saved_pos;
+                    goto normal_fraction;
+                }
+                next();
+                // Get variable name
+                if(peek().type != TokenType::IDENTIFIER) {
+                    position = saved_pos;
+                    goto normal_fraction;
+                }
+                std::string var_name = std::string(next().text);
+                // skip ^n if present
+                if(peek().type == TokenType::EXPONENT) {
+                    next();
+                    if(peek().type == TokenType::LEFT_CURLY_BRACKET) {
+                        match_curly_bracket(); // consume and discard
+                    } else if(peek().type == TokenType::NUMERIC_LITERAL) {
+                        next();
+                    }
+                }
+                if(!match(TokenType::RIGHT_CURLY_BRACKET)) {
+                    position = saved_pos;
+                    goto normal_fraction;
+                }
+                // Now parse the body expression - it might be in parens
+                MaybeAST body = nullptr;
+                if(peek().type == TokenType::LEFT_PAREN) {
+                    body = match_parentheses();
+                } else if(peek().type == TokenType::LEFT_CURLY_BRACKET) {
+                    body = match_curly_bracket();
+                } else {
+                    body = parse_expression(19);
+                }
+                if(!body) return body;
+
+                // Build DERIVATIVE ASTCall: args=[body], special_value=var_name identifier
+                Token deriv_token{TokenType::DERIVATIVE, "derivative"};
+                deriv_token.value = EValue{(long double)deriv_order};
+                std::vector<std::unique_ptr<AST>> args;
+                args.emplace_back(std::move(body.value()));
+                Token var_token{TokenType::IDENTIFIER, var_name};
+                auto var_ast = std::make_unique<AST>(var_token);
+                return std::make_unique<AST>(deriv_token, std::move(args), std::move(var_ast));
+            }
+        }
+    }
+
+    normal_fraction:
     auto numerator = match_curly_bracket();
     if(!numerator) return numerator;
     auto denominator = match_curly_bracket();
@@ -227,6 +390,14 @@ dv::MaybeAST dv::Parser::match_exponent(std::int32_t right_binding_power){
     const bool uses_brackets = match(TokenType::LEFT_CURLY_BRACKET);
     MaybeAST rhs = nullptr;
     if(uses_brackets){
+        // Check for ^{T} (transpose) or ^{-1} (inverse)
+        if(peek().type == TokenType::IDENTIFIER && peek().text == "T" &&
+           position + 1 < tokens.size() && tokens[position + 1].type == TokenType::RIGHT_CURLY_BRACKET) {
+            next(); // consume T
+            match(TokenType::RIGHT_CURLY_BRACKET);
+            Token transpose_token{TokenType::TRANSPOSE, "T"};
+            return std::make_unique<AST>(transpose_token);
+        }
         rhs = parse_expression(0);  // Parse full expression in braces
         if(!rhs) return rhs;
         if(!match(TokenType::RIGHT_CURLY_BRACKET)) return std::unexpected{std::format("Expected '}}' after exponent but found {}", describe_token(peek()))};
@@ -238,7 +409,6 @@ dv::MaybeAST dv::Parser::match_exponent(std::int32_t right_binding_power){
             if(!rhs) return rhs;
         } else {
             // Otherwise, just grab the next LHS term (atom or parenthesized expression)
-            // This prevents issues with complex expressions
             rhs = match_lhs(next());
             if(!rhs) return rhs;
         }
@@ -323,12 +493,274 @@ dv::MaybeAST dv::Parser::match_log(const dv::Token &token){
         : std::make_unique<AST>(peeked_exponent, std::make_unique<AST>(token, std::move(args), std::move(base.value())), std::move(exponent.value()));
 }
 
+// Parse \sum_{i=a}^{b} expr or \prod_{i=a}^{b} expr
+dv::MaybeAST dv::Parser::match_sum_prod(const dv::Token &token) {
+    // Parse subscript _{i=start}
+    if(!match(TokenType::SUBSCRIPT)) {
+        return std::unexpected{std::format("'{}' requires subscript _{{}}", token.text)};
+    }
+    if(!match(TokenType::LEFT_CURLY_BRACKET)) {
+        return std::unexpected{std::format("'{}' subscript requires '{{'", token.text)};
+    }
+    // Get loop variable
+    if(peek().type != TokenType::IDENTIFIER) {
+        return std::unexpected{std::format("'{}' expects loop variable", token.text)};
+    }
+    std::string loop_var = std::string(next().text);
+    if(!match(TokenType::EQUAL)) {
+        return std::unexpected{std::format("'{}' expects '=' after loop variable", token.text)};
+    }
+    auto start = parse_expression(0);
+    if(!start) return start;
+    if(!match(TokenType::RIGHT_CURLY_BRACKET)) {
+        return std::unexpected{std::format("'{}' subscript missing '}}'", token.text)};
+    }
+
+    // Parse superscript ^{end}
+    if(!match(TokenType::EXPONENT)) {
+        return std::unexpected{std::format("'{}' requires superscript ^{{}}", token.text)};
+    }
+    MaybeAST end = nullptr;
+    if(match(TokenType::LEFT_CURLY_BRACKET)) {
+        end = parse_expression(0);
+        if(!end) return end;
+        if(!match(TokenType::RIGHT_CURLY_BRACKET)) {
+            return std::unexpected{std::format("'{}' superscript missing '}}'", token.text)};
+        }
+    } else {
+        end = match_lhs(next());
+        if(!end) return end;
+    }
+
+    // Parse body expression
+    MaybeAST body = nullptr;
+    if(peek().type == TokenType::LEFT_PAREN) {
+        body = match_parentheses();
+    } else if(peek().type == TokenType::LEFT_CURLY_BRACKET) {
+        body = match_curly_bracket();
+    } else {
+        body = parse_expression(19);
+    }
+    if(!body) return body;
+
+    // Build ASTCall: args = [start, end, body], special_value = loop_var identifier
+    std::vector<std::unique_ptr<AST>> args;
+    args.emplace_back(std::move(start.value()));
+    args.emplace_back(std::move(end.value()));
+    args.emplace_back(std::move(body.value()));
+    Token var_token{TokenType::IDENTIFIER, loop_var};
+    auto var_ast = std::make_unique<AST>(var_token);
+    return std::make_unique<AST>(token, std::move(args), std::move(var_ast));
+}
+
+// Parse \int_{a}^{b} expr \, dx
+dv::MaybeAST dv::Parser::match_integral(const dv::Token &token) {
+    // Parse subscript _{lower}
+    if(!match(TokenType::SUBSCRIPT)) {
+        return std::unexpected{"\\int requires subscript _{lower}"};
+    }
+    MaybeAST lower = nullptr;
+    if(match(TokenType::LEFT_CURLY_BRACKET)) {
+        lower = parse_expression(0);
+        if(!lower) return lower;
+        if(!match(TokenType::RIGHT_CURLY_BRACKET)) {
+            return std::unexpected{"\\int lower bound missing '}'"};
+        }
+    } else {
+        lower = match_lhs(next());
+        if(!lower) return lower;
+    }
+
+    // Parse superscript ^{upper}
+    if(!match(TokenType::EXPONENT)) {
+        return std::unexpected{"\\int requires superscript ^{upper}"};
+    }
+    MaybeAST upper = nullptr;
+    if(match(TokenType::LEFT_CURLY_BRACKET)) {
+        upper = parse_expression(0);
+        if(!upper) return upper;
+        if(!match(TokenType::RIGHT_CURLY_BRACKET)) {
+            return std::unexpected{"\\int upper bound missing '}'"};
+        }
+    } else {
+        upper = match_lhs(next());
+        if(!upper) return upper;
+    }
+
+    // Parse the integrand body.
+    // We need to detect the trailing 'dx' pattern. Strategy: scan ahead to find
+    // the last 'd' identifier before end of expression, and only parse up to there.
+    // For simplicity, save position and look for the 'd' + identifier pattern near the end.
+    std::string int_var = "x"; // default
+
+    // Find the last 'd' identifier in the remaining tokens
+    std::size_t d_pos = 0;
+    bool found_d = false;
+    for(std::size_t i = position; i + 1 < tokens.size(); i++) {
+        if(tokens[i].type == TokenType::IDENTIFIER && tokens[i].text == "d" &&
+           i + 1 < tokens.size() && tokens[i+1].type == TokenType::IDENTIFIER) {
+            d_pos = i;
+            found_d = true;
+        }
+    }
+
+    MaybeAST body = nullptr;
+    if(found_d && d_pos > position) {
+        // Parse body up to but not including the 'd'
+        // We need to insert a temporary stop. Easiest: save and modify token
+        auto saved_token = tokens[d_pos];
+        tokens[d_pos] = Token{TokenType::TEOF, ""};
+        body = parse_expression(0);
+        tokens[d_pos] = saved_token;
+        if(!body) return body;
+
+        // Now consume 'd' and variable
+        if(peek().type == TokenType::IDENTIFIER && peek().text == "d") {
+            next(); // consume 'd'
+            if(peek().type == TokenType::IDENTIFIER) {
+                int_var = std::string(next().text);
+            }
+        }
+    } else {
+        body = parse_expression(0);
+        if(!body) return body;
+    }
+
+    // Build ASTCall: args = [lower, upper, body], special_value = int_var identifier
+    std::vector<std::unique_ptr<AST>> args;
+    args.emplace_back(std::move(lower.value()));
+    args.emplace_back(std::move(upper.value()));
+    args.emplace_back(std::move(body.value()));
+    Token var_token{TokenType::IDENTIFIER, int_var};
+    auto var_ast = std::make_unique<AST>(var_token);
+    return std::make_unique<AST>(token, std::move(args), std::move(var_ast));
+}
+
+// Parse \begin{cases} expr & cond \\ expr & cond \\ expr & \text{otherwise} \end{cases}
+dv::MaybeAST dv::Parser::match_piecewise(const dv::Token &token) {
+    std::vector<std::unique_ptr<AST>> args;
+
+    while(true) {
+        // Parse value expression (stop at &)
+        auto value_expr = parse_expression(0);
+        if(!value_expr) return value_expr;
+        args.emplace_back(std::move(value_expr.value()));
+
+        if(!match(TokenType::AMPERSAND)) {
+            return std::unexpected{"Piecewise: expected '&' between value and condition"};
+        }
+
+        // Check for \text{otherwise}
+        if(peek().type == TokenType::TEXT_OTHERWISE) {
+            next(); // consume "otherwise"
+            // Add a "true" constant as condition
+            Token true_token{TokenType::NUMERIC_LITERAL, 1.0, "1"};
+            args.emplace_back(std::make_unique<AST>(true_token));
+        } else {
+            auto cond_expr = parse_expression(0);
+            if(!cond_expr) return cond_expr;
+            args.emplace_back(std::move(cond_expr.value()));
+        }
+
+        // Check for \\ (more cases) or \end{cases}
+        if(peek().type == TokenType::END_ENV) {
+            next(); // consume \end{cases}
+            break;
+        }
+        if(peek().type == TokenType::DOUBLE_BACKSLASH) {
+            next(); // consume double-backslash
+            continue;
+        }
+        // If we hit EOF or something unexpected, break
+        break;
+    }
+
+    return std::make_unique<AST>(token, std::move(args));
+}
+
+// Parse \begin{bmatrix} a & b \\ c & d \end{bmatrix}
+dv::MaybeAST dv::Parser::match_matrix(const dv::Token &token) {
+    std::vector<std::unique_ptr<AST>> args; // flattened: row elements
+    // We'll store rows×cols as a special value
+    int rows = 1, cols = 0, current_col = 0;
+
+    // Parse first row to determine cols
+    while(true) {
+        auto elem = parse_expression(0);
+        if(!elem) return elem;
+        args.emplace_back(std::move(elem.value()));
+        current_col++;
+
+        if(peek().type == TokenType::AMPERSAND) {
+            next();
+            continue;
+        }
+        break;
+    }
+    cols = current_col;
+
+    while(peek().type == TokenType::DOUBLE_BACKSLASH) {
+        next(); // consume double-backslash
+        if(peek().type == TokenType::END_ENV) break; // trailing double-backslash
+        rows++;
+        current_col = 0;
+        while(true) {
+            auto elem = parse_expression(0);
+            if(!elem) return elem;
+            args.emplace_back(std::move(elem.value()));
+            current_col++;
+
+            if(peek().type == TokenType::AMPERSAND) {
+                next();
+                continue;
+            }
+            break;
+        }
+        if(current_col != cols) {
+            return std::unexpected{std::format("Matrix row has {} columns, expected {}", current_col, cols)};
+        }
+    }
+
+    if(!match(TokenType::END_ENV)) {
+        return std::unexpected{std::format("Matrix missing \\end{{bmatrix}}, found {}", describe_token(peek()))};
+    }
+
+    // Store dimensions in token value
+    Token mat_token{TokenType::MATRIX_BEGIN, "matrix"};
+    mat_token.value = EValue{(long double)(rows * 1000 + cols)}; // encode rows and cols
+    return std::make_unique<AST>(mat_token, std::move(args));
+}
+
 dv::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
     const auto args_count = builtin_function_args(token.type);
-    if(args_count < 1) return std::unexpected{std::format("'{}' requires at least one argument", token.text)};
 
     if(token.type == TokenType::BUILTIN_FUNC_SQRT) return match_sqrt(token);
     if(token.type == TokenType::BUILTIN_FUNC_LOG) return match_log(token);
+    if(token.type == TokenType::BUILTIN_FUNC_SUM || token.type == TokenType::BUILTIN_FUNC_PROD)
+        return match_sum_prod(token);
+    if(token.type == TokenType::BUILTIN_FUNC_INT) return match_integral(token);
+
+    if(args_count == 0) return std::unexpected{std::format("'{}' requires at least one argument", token.text)};
+
+    // Variadic functions (negative args_count)
+    if(args_count < 0) {
+        if(!match(TokenType::LEFT_PAREN)) {
+            return std::unexpected{std::format("'{}' requires parentheses", token.text)};
+        }
+        std::vector<std::unique_ptr<AST>> args;
+        auto arg = parse_expression(0);
+        if(!arg) return arg;
+        args.emplace_back(std::move(arg.value()));
+        while(match(TokenType::COMMA)) {
+            arg = parse_expression(0);
+            if(!arg) return arg;
+            args.emplace_back(std::move(arg.value()));
+        }
+        if(!match(TokenType::RIGHT_PAREN)) {
+            return std::unexpected{std::format("'{}' missing closing ')'", token.text)};
+        }
+        return std::make_unique<AST>(token, std::move(args));
+    }
 
     Token peeked_exponent = peek();
     MaybeAST exponent = nullptr;
@@ -355,7 +787,7 @@ dv::MaybeAST dv::Parser::match_builtin_function(const dv::Token &token){
             : std::make_unique<AST>(peeked_exponent, std::make_unique<AST>(token, std::move(args)), std::move(exponent.value()));
     }
 
-    for(std::uint32_t i = 0; i < args_count - 1; i++){
+    for(std::int32_t i = 0; i < args_count - 1; i++){
         auto arg = parse_expression(0);
         if(!arg) return arg;
         if(!match(TokenType::COMMA)) {
@@ -378,11 +810,73 @@ dv::MaybeAST dv::Parser::match_atom(const dv::Token &token){
     if(token.type == TokenType::NUMERIC_LITERAL) return std::make_unique<AST>(token);
     if(token.type == TokenType::IDENTIFIER) {
         identifier_dependencies.insert(std::string{token.text});
+
+        // Check for f'(x) syntax: IDENTIFIER followed by PRIME
+        if(peek().type == TokenType::PRIME) {
+            int prime_count = 0;
+            while(peek().type == TokenType::PRIME) {
+                next();
+                prime_count++;
+            }
+            // Now expect parentheses with args
+            if(peek().type == TokenType::LEFT_PAREN) {
+                next(); // consume (
+                std::vector<std::unique_ptr<AST>> args;
+                auto arg = parse_expression(0);
+                if(!arg) return arg;
+                args.emplace_back(std::move(arg.value()));
+                while(match(TokenType::COMMA)) {
+                    arg = parse_expression(0);
+                    if(!arg) return arg;
+                    args.emplace_back(std::move(arg.value()));
+                }
+                if(!match(TokenType::RIGHT_PAREN)) {
+                    return std::unexpected{std::format("Missing ')' in f'(...)")};
+                }
+                Token prime_token{TokenType::PRIME, std::string(token.text)};
+                prime_token.value = EValue{(long double)prime_count};
+                return std::make_unique<AST>(prime_token, std::move(args));
+            }
+        }
+
+        // Check for custom function call: IDENTIFIER LEFT_PAREN (but not single-char variables that should implicit multiply)
+        if(peek().type == TokenType::LEFT_PAREN && token.text.size() > 1) {
+            // This looks like a function call: f(x), foo(x,y)
+            auto saved = position;
+            next(); // consume (
+            std::vector<std::unique_ptr<AST>> args;
+            if(peek().type != TokenType::RIGHT_PAREN) {
+                auto arg = parse_expression(0);
+                if(!arg) {
+                    position = saved;
+                    return std::make_unique<AST>(token);
+                }
+                args.emplace_back(std::move(arg.value()));
+                while(match(TokenType::COMMA)) {
+                    arg = parse_expression(0);
+                    if(!arg) {
+                        position = saved;
+                        return std::make_unique<AST>(token);
+                    }
+                    args.emplace_back(std::move(arg.value()));
+                }
+            }
+            if(!match(TokenType::RIGHT_PAREN)) {
+                // Not a function call, backtrack
+                position = saved;
+                return std::make_unique<AST>(token);
+            }
+            Token func_token{TokenType::FUNC_CALL, token.text};
+            return std::make_unique<AST>(func_token, std::move(args));
+        }
+
         return std::make_unique<AST>(token);
     }
     if(token.type == TokenType::FORMULA_QUERY) return std::make_unique<AST>(token);
     if(token.type == TokenType::FRACTION) return match_fraction(token);
     if(token.type == TokenType::ABSOLUTE_BAR) return match_absolute_bar(token);
+    if(token.type == TokenType::PIECEWISE_BEGIN) return match_piecewise(token);
+    if(token.type == TokenType::MATRIX_BEGIN) return match_matrix(token);
     if(is_builtin_function(token.type)) return match_builtin_function(token);
     return std::unexpected{std::format("Expected a value (number, variable, or function), found {}", describe_token(token))};
 }
@@ -391,6 +885,17 @@ dv::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
     if(is_atom(token.type)){
         auto lhs = match_atom(token);
         if(!lhs) return lhs;
+        // Check for array indexing: expr[index]
+        while(peek().type == TokenType::LEFT_BRACKET) {
+            next(); // consume [
+            auto index = parse_expression(0);
+            if(!index) return index;
+            if(!match(TokenType::RIGHT_BRACKET)) {
+                return std::unexpected{std::format("Expected ']' for array indexing, found {}", describe_token(peek()))};
+            }
+            Token idx_token{TokenType::INDEX_ACCESS, "[]"};
+            lhs = std::make_unique<AST>(idx_token, std::move(lhs.value()), std::move(index.value()));
+        }
         if(is_unary_postfix_op(peek().type)){
             return std::make_unique<AST>(next(), std::move(lhs.value()), nullptr);
         }
@@ -404,6 +909,25 @@ dv::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
         }
         return lhs;
     }
+    if(token.type == TokenType::LEFT_BRACKET) {
+        // Array literal: [expr, expr, ...]
+        std::vector<std::unique_ptr<AST>> elements;
+        if(peek().type != TokenType::RIGHT_BRACKET) {
+            auto elem = parse_expression(0);
+            if(!elem) return elem;
+            elements.emplace_back(std::move(elem.value()));
+            while(match(TokenType::COMMA)) {
+                elem = parse_expression(0);
+                if(!elem) return elem;
+                elements.emplace_back(std::move(elem.value()));
+            }
+        }
+        if(!match(TokenType::RIGHT_BRACKET)) {
+            return std::unexpected{std::format("Array literal missing ']', found {}", describe_token(peek()))};
+        }
+        Token arr_token{TokenType::ARRAY_LITERAL, "[]"};
+        return std::make_unique<AST>(arr_token, std::move(elements));
+    }
     if(token.type == TokenType::LEFT_ABSOLUTE_BAR) {
         auto lhs = parse_expression(0);
         if(!lhs) return lhs;
@@ -416,8 +940,6 @@ dv::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
         return std::make_unique<AST>(abs_token, std::move(args));
     }
     if(is_unary_prefix_op(token.type)) {
-        // For unary prefix, we need to allow atoms, parentheses, or other prefix ops
-        // But also need to check we're not at end of expression
         if(peek().type == TokenType::TEOF) return std::unexpected{"Unexpected end of expression after unary operator"};
         if(peek().type == TokenType::RIGHT_PAREN || peek().type == TokenType::RIGHT_BRACKET ||
            peek().type == TokenType::RIGHT_ABSOLUTE_BAR ||
@@ -425,8 +947,6 @@ dv::MaybeAST dv::Parser::match_lhs(const dv::Token &token){
            peek().type == TokenType::ABSOLUTE_BAR) {
             return std::unexpected{std::format("Unary '{}' has no operand, followed by {}", token.text, describe_token(peek()))};
         }
-        // Use binding power 15: higher than addition (10) but lower than multiplication (20) and exponent (31)
-        // This makes -5+2 parse as (-5)+2, but -(2+3)^2 needs the parentheses to group (2+3) first
         auto rhs = parse_expression(15);
         if(!rhs) return rhs;
         return std::make_unique<AST>(token, std::move(rhs.value()), nullptr);
@@ -445,7 +965,11 @@ dv::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power) {
         else if(op.type == TokenType::RIGHT_CURLY_BRACKET) break;
         else if(op.type == TokenType::RIGHT_ABSOLUTE_BAR) break;
         else if(op.type == TokenType::COMMA) break;
-        else if(op.type == TokenType::ABSOLUTE_BAR) break;  // Don't implicit multiply with closing |
+        else if(op.type == TokenType::ABSOLUTE_BAR) break;
+        else if(op.type == TokenType::AMPERSAND) break;
+        else if(op.type == TokenType::DOUBLE_BACKSLASH) break;
+        else if(op.type == TokenType::END_ENV) break;
+        else if(op.type == TokenType::TEXT_OTHERWISE) break;
 
         const bool is_implicit_multiplication = !is_binop(op.type);
         if(is_implicit_multiplication) op = {TokenType::TIMES, "*"};
@@ -461,13 +985,30 @@ dv::MaybeAST dv::Parser::parse_expression(std::int32_t min_binding_power) {
             }
             has_equal = true;
             auto lhs_type = lhs.value()->token.type;
-            if(lhs_type != TokenType::IDENTIFIER && lhs_type != TokenType::FORMULA_QUERY) {
-                return std::unexpected{"Left side of '=' must be a variable name or '?'"};
+            if(lhs_type != TokenType::IDENTIFIER && lhs_type != TokenType::FORMULA_QUERY && lhs_type != TokenType::FUNC_CALL) {
+                return std::unexpected{"Left side of '=' must be a variable name, function call, or '?'"};
             }
+        }
+
+        // Handle postfix percent: value\% -> value / 100
+        if(op.type == TokenType::PERCENT) {
+            Token div_token{TokenType::DIVIDE, "/"};
+            Token hundred_token{TokenType::NUMERIC_LITERAL, 100.0, "100"};
+            auto hundred_ast = std::make_unique<AST>(hundred_token);
+            lhs = std::make_unique<AST>(div_token, std::move(lhs.value()), std::move(hundred_ast));
+            continue;
         }
 
         auto rhs = op.type != TokenType::EXPONENT ? parse_expression(right_binding_power) : match_exponent(right_binding_power);
         if(!rhs) return rhs;
+
+        // Check for transpose: if rhs is a TRANSPOSE token node, convert to ^T operation
+        if(rhs.value()->token.type == TokenType::TRANSPOSE) {
+            Token trans_token{TokenType::TRANSPOSE, "T"};
+            lhs = std::make_unique<AST>(trans_token, std::move(lhs.value()), nullptr);
+            continue;
+        }
+
         lhs = std::make_unique<AST>(op, std::move(lhs.value()), std::move(rhs.value()));
     }
 

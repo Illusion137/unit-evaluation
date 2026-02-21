@@ -152,6 +152,19 @@ dv::Token dv::Lexer::get_indentifier_token(std::uint32_t max_length) noexcept{
 }
 dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
     advance();
+    // Check for \\ (double backslash) - row separator
+    if(peek() == '\\') {
+        return advance_with_token(TokenType::DOUBLE_BACKSLASH);
+    }
+    // Check for \, (ignorable whitespace in integrals)
+    if(peek() == ',') {
+        advance();
+        return consume_next_token(); // skip and get next token
+    }
+    // Check for \% (percent)
+    if(peek() == '%') {
+        return advance_with_token(TokenType::PERCENT);
+    }
     if(remaining_length() >= 8) {
         switch(strint(it, 8)) {
             case strint<"sin^{-1}">(): return advance_with_token(TokenType::BUILTIN_FUNC_ARCSIN, 8);
@@ -183,6 +196,18 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"times">(): return advance_with_token(TokenType::TIMES, 5);
             case strint<"left(">(): return advance_with_token(TokenType::LEFT_PAREN, 5);
             case strint<"left|">(): return advance_with_token(TokenType::LEFT_ABSOLUTE_BAR, 5);
+            case strint<"begin">(): {
+                advance(5);
+                std::array<char, 32> buffer;
+                std::uint8_t write = 0;
+                buffer.fill(0);
+                auto result = collect_curly_brackets(buffer.data(), buffer.size(), write);
+                if(!result) return {TokenType::UNKNOWN, "Bad \\begin environment"};
+                std::string env_name(buffer.data(), write);
+                if(env_name == "cases") return {TokenType::PIECEWISE_BEGIN, "\\begin{cases}"};
+                if(env_name == "bmatrix") return {TokenType::MATRIX_BEGIN, "\\begin{bmatrix}"};
+                return {TokenType::BEGIN_ENV, env_name};
+            }
             default: break;
         }
     }
@@ -193,6 +218,21 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 4);
             case strint<"frac">(): return advance_with_token(TokenType::FRACTION, 4);
             case strint<"cdot">(): return advance_with_token(TokenType::TIMES, 4);
+            case strint<"prod">(): return advance_with_token(TokenType::BUILTIN_FUNC_PROD, 4);
+            case strint<"lnot">(): return advance_with_token(TokenType::LOGICAL_NOT, 4);
+            case strint<"land">(): return advance_with_token(TokenType::LOGICAL_AND, 4);
+            case strint<"text">(): {
+                advance(4);
+                std::array<char, 32> buffer;
+                std::uint8_t write = 0;
+                buffer.fill(0);
+                auto result = collect_curly_brackets(buffer.data(), buffer.size(), write);
+                if(!result) return {TokenType::UNKNOWN, "Bad \\text"};
+                std::string text_content(buffer.data(), write);
+                if(text_content == "otherwise") return {TokenType::TEXT_OTHERWISE, "otherwise"};
+                return {TokenType::IDENTIFIER, text_content};
+            }
+            case strint<"conj">(): return advance_with_token(TokenType::BUILTIN_FUNC_CONJ, 4);
             default: break;
         }
     }
@@ -208,6 +248,28 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
             case strint<"nCr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NCR, 3);
             case strint<"nPr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NPR, 3);
             case strint<"log">(): return advance_with_token(TokenType::BUILTIN_FUNC_LOG, 3);
+            case strint<"sum">(): return advance_with_token(TokenType::BUILTIN_FUNC_SUM, 3);
+            case strint<"int">(): return advance_with_token(TokenType::BUILTIN_FUNC_INT, 3);
+            case strint<"min">(): return advance_with_token(TokenType::BUILTIN_FUNC_MIN, 3);
+            case strint<"max">(): return advance_with_token(TokenType::BUILTIN_FUNC_MAX, 3);
+            case strint<"gcd">(): return advance_with_token(TokenType::BUILTIN_FUNC_GCD, 3);
+            case strint<"lcm">(): return advance_with_token(TokenType::BUILTIN_FUNC_LCM, 3);
+            case strint<"sig">(): return advance_with_token(TokenType::BUILTIN_FUNC_SIG, 3);
+            case strint<"det">(): return advance_with_token(TokenType::BUILTIN_FUNC_DET, 3);
+            case strint<"lor">(): return advance_with_token(TokenType::LOGICAL_OR, 3);
+            case strint<"leq">(): return advance_with_token(TokenType::LESS_EQUAL, 3);
+            case strint<"geq">(): return advance_with_token(TokenType::GREATER_EQUAL, 3);
+            case strint<"mod">(): return advance_with_token(TokenType::MODULO, 3);
+            case strint<"end">(): {
+                advance(3);
+                std::array<char, 32> buffer;
+                std::uint8_t write = 0;
+                buffer.fill(0);
+                auto result = collect_curly_brackets(buffer.data(), buffer.size(), write);
+                if(!result) return {TokenType::UNKNOWN, "Bad \\end environment"};
+                std::string env_name(buffer.data(), write);
+                return {TokenType::END_ENV, env_name};
+            }
             default: break;
         }
     }
@@ -215,6 +277,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
         switch(*(std::uint16_t*)it) {
             case strint<"pi">(): return advance_with_token(M_PI, 2);
             case strint<"ln">(): return advance_with_token(TokenType::BUILTIN_FUNC_LN, 2);
+            case strint<"pm">(): return advance_with_token(TokenType::PLUS_MINUS, 2);
             default: break;
         }
     }
@@ -231,6 +294,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
                 switch(strint(buffer.data(), 5)) {
                     case strint<"floor">(): return advance_with_token(TokenType::BUILTIN_FUNC_FLOOR, 0);
                     case strint<"round">(): return advance_with_token(TokenType::BUILTIN_FUNC_ROUND, 0);
+                    case strint<"trace">(): return advance_with_token(TokenType::BUILTIN_FUNC_TRACE, 0);
                     default: break;
                 }
             }
@@ -239,6 +303,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
                     case strint<"ceil">(): return advance_with_token(TokenType::BUILTIN_FUNC_CEIL, 0);
                     case strint<"fact">(): return advance_with_token(TokenType::BUILTIN_FUNC_FACT, 0);
                     case strint<"unit">(): return advance_with_token(TokenType::BUILTIN_FUNC_UNIT, 0);
+                    case strint<"conj">(): return advance_with_token(TokenType::BUILTIN_FUNC_CONJ, 0);
                     default: break;
                 }
             }
@@ -248,6 +313,21 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
                     case strint<"nCr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NCR, 0);
                     case strint<"nPr">(): return advance_with_token(TokenType::BUILTIN_FUNC_NPR, 0);
                     case strint<"val">(): return advance_with_token(TokenType::BUILTIN_FUNC_VALUE, 0);
+                    case strint<"min">(): return advance_with_token(TokenType::BUILTIN_FUNC_MIN, 0);
+                    case strint<"max">(): return advance_with_token(TokenType::BUILTIN_FUNC_MAX, 0);
+                    case strint<"gcd">(): return advance_with_token(TokenType::BUILTIN_FUNC_GCD, 0);
+                    case strint<"lcm">(): return advance_with_token(TokenType::BUILTIN_FUNC_LCM, 0);
+                    case strint<"sig">(): return advance_with_token(TokenType::BUILTIN_FUNC_SIG, 0);
+                    case strint<"det">(): return advance_with_token(TokenType::BUILTIN_FUNC_DET, 0);
+                    case strint<"mod">(): return advance_with_token(TokenType::MODULO, 0);
+                    default: break;
+                }
+            }
+            if(write >= 2) {
+                switch(*(std::uint16_t*)buffer.data()) {
+                    case strint<"Re">(): return advance_with_token(TokenType::BUILTIN_FUNC_RE, 0);
+                    case strint<"Im">(): return advance_with_token(TokenType::BUILTIN_FUNC_IM, 0);
+                    case strint<"tr">(): return advance_with_token(TokenType::BUILTIN_FUNC_TRACE, 0);
                     default: break;
                 }
             }
@@ -573,10 +653,60 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
         case ']': return advance_with_token(TokenType::RIGHT_BRACKET);
         case '|': return advance_with_token(TokenType::ABSOLUTE_BAR);
         case '?': return advance_with_token(TokenType::FORMULA_QUERY);
+        case '<': return advance_with_token(TokenType::LESS_THAN);
+        case '>': return advance_with_token(TokenType::GREATER_THAN);
+        case '&': return advance_with_token(TokenType::AMPERSAND);
+        case '\'': return advance_with_token(TokenType::PRIME);
+        case '%': return advance_with_token(TokenType::PERCENT);
         case '\\': return get_special_indentifier_token();
         default: {
+            // Hex literals: 0x...
+            if(peek() == '0' && remaining_length() >= 2 && (peek_next() == 'x' || peek_next() == 'X')) {
+                const char *begit = it;
+                advance(2);
+                long long hex_val = 0;
+                while(std::isxdigit(peek())) {
+                    char c = peek();
+                    hex_val <<= 4;
+                    if(c >= '0' && c <= '9') hex_val += c - '0';
+                    else if(c >= 'a' && c <= 'f') hex_val += c - 'a' + 10;
+                    else if(c >= 'A' && c <= 'F') hex_val += c - 'A' + 10;
+                    advance();
+                }
+                return {EValue{(long double)hex_val}, {begit, it}};
+            }
+            // Binary literals: 0b...
+            if(peek() == '0' && remaining_length() >= 2 && (peek_next() == 'b' || peek_next() == 'B')) {
+                const char *begit = it;
+                advance(2);
+                long long bin_val = 0;
+                while(peek() == '0' || peek() == '1') {
+                    bin_val = (bin_val << 1) | (peek() - '0');
+                    advance();
+                }
+                return {EValue{(long double)bin_val}, {begit, it}};
+            }
             if(isnumeric(peek())) return get_numeric_literal_token();
-            if(std::isalpha(peek())) return get_indentifier_token(1);
+            if(std::isalpha(peek())) {
+                // Check if this is a multi-char identifier (function name, 'ans', etc.)
+                // by looking ahead: if multiple alpha chars are followed by ( or ' or = or _
+                const char *lookahead = it;
+                std::uint32_t alpha_count = 0;
+                while(lookahead < begin + length && std::isalpha(*lookahead)) {
+                    lookahead++;
+                    alpha_count++;
+                }
+                // Allow multi-char if followed by ( or ' or it's a known keyword like "ans"
+                if(alpha_count > 1 && lookahead < begin + length &&
+                   (*lookahead == '(' || *lookahead == '\'' || *lookahead == '=')) {
+                    return get_indentifier_token();
+                }
+                // Check for known multi-char identifiers like "ans"
+                if(alpha_count == 3 && remaining_length() >= 3 && strint(it, 3) == strint<"ans">()) {
+                    return get_indentifier_token(3);
+                }
+                return get_indentifier_token(1);
+            }
         };
     }
     return {TokenType::UNKNOWN, it};

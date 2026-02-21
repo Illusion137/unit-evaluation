@@ -61,6 +61,10 @@ namespace dv {
         MaybeAST match_builtin_function(const dv::Token &token);
         MaybeAST match_fraction(const dv::Token &token);
         MaybeAST match_exponent(std::int32_t right_binding_power);
+        MaybeAST match_sum_prod(const dv::Token &token);
+        MaybeAST match_integral(const dv::Token &token);
+        MaybeAST match_piecewise(const dv::Token &token);
+        MaybeAST match_matrix(const dv::Token &token);
         MaybeAST parse_expression(std::int32_t min_binding_power);
     };
 }

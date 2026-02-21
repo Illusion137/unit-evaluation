@@ -12,8 +12,10 @@
  *  - Greek letters as variable names (e.g. \alpha, \beta, \omega, …)
  *  - Modifier prefixes: \delta x, \Delta x, \partial x  → single variable
  *  - Font/accent commands: \mathcal{X}, \mathbf{v}, \hat{x}, \vec{x}, etc.
- *  - Subscript variables (e.g. v_0, x_1)
+ *  - Subscript variables (e.g. v_0, x_1, I_{total})
  *  - Implicit multiplication (adjacent terms)
+ *  - ± results: even-root inversion, quadratic formula, depressed-cubic
+ *  - Polynomial solving: linear (ax+b=0) and quadratic (ax²+bx+c=0)
  *
  * Dependencies: none (pure TypeScript, no external packages required)
  */
@@ -23,180 +25,159 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 type NodeKind =
-	| "num"       // numeric literal
-	| "var"       // variable (leaf)
-	| "add"       // a + b
-	| "sub"       // a - b
-	| "mul"       // a * b
-	| "div"       // a / b
-	| "pow"       // a ^ b
-	| "neg"       // unary minus
-	| "fn"        // named function: fn(arg) or fn(arg, arg2)
-	| "eq";       // equation: lhs = rhs  (top-level only)
+  | "num"       // numeric literal
+  | "var"       // variable (leaf)
+  | "add"       // a + b
+  | "sub"       // a - b
+  | "mul"       // a * b
+  | "div"       // a / b
+  | "pow"       // a ^ b
+  | "neg"       // unary minus
+  | "pm"        // ± (plus-or-minus): base ± delta
+  | "fn"        // named function: fn(arg) or fn(arg, arg2)
+  | "eq";       // equation: lhs = rhs  (top-level only)
 
-interface Num { kind: "num"; value: number }
-interface Var { kind: "var"; name: string }
-interface BinOp { kind: "add" | "sub" | "mul" | "div" | "pow"; left: Node; right: Node }
-interface Neg { kind: "neg"; arg: Node }
-interface Fn { kind: "fn"; name: string; args: Node[] }
-interface Eq { kind: "eq"; left: Node; right: Node }
+interface Num   { kind: "num"; value: number }
+interface Var   { kind: "var"; name: string }
+interface BinOp { kind: "add"|"sub"|"mul"|"div"|"pow"; left: Node; right: Node }
+interface Neg   { kind: "neg"; arg: Node }
+interface Pm    { kind: "pm"; base: Node; delta: Node }   // base ± delta
+interface Fn    { kind: "fn"; name: string; args: Node[] }
+interface Eq    { kind: "eq"; left: Node; right: Node }
 
-type Node = Num | Var | BinOp | Neg | Fn | Eq;
+type Node = Num | Var | BinOp | Neg | Pm | Fn | Eq;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const num = (value: number): Num => ({ kind: "num", value });
-const var_ = (name: string): Var => ({ kind: "var", name });
-const add = (l: Node, r: Node): BinOp => ({ kind: "add", left: l, right: r });
-const sub = (l: Node, r: Node): BinOp => ({ kind: "sub", left: l, right: r });
-const mul = (l: Node, r: Node): BinOp => ({ kind: "mul", left: l, right: r });
-const div = (l: Node, r: Node): BinOp => ({ kind: "div", left: l, right: r });
-const pow = (l: Node, r: Node): BinOp => ({ kind: "pow", left: l, right: r });
-const neg = (a: Node): Neg => ({ kind: "neg", arg: a });
-const fn_ = (name: string, ...args: Node[]): Fn => ({ kind: "fn", name, args });
-const eq_ = (l: Node, r: Node): Eq => ({ kind: "eq", left: l, right: r });
+const num  = (value: number): Num  => ({ kind: "num", value });
+const var_ = (name: string):  Var  => ({ kind: "var", name });
+const add  = (l: Node, r: Node): BinOp => ({ kind: "add", left: l, right: r });
+const sub  = (l: Node, r: Node): BinOp => ({ kind: "sub", left: l, right: r });
+const mul  = (l: Node, r: Node): BinOp => ({ kind: "mul", left: l, right: r });
+const div  = (l: Node, r: Node): BinOp => ({ kind: "div", left: l, right: r });
+const pow  = (l: Node, r: Node): BinOp => ({ kind: "pow", left: l, right: r });
+const neg  = (a: Node): Neg  => ({ kind: "neg", arg: a });
+const pm_  = (base: Node, delta: Node): Pm => ({ kind: "pm", base, delta });
+const fn_  = (name: string, ...args: Node[]): Fn => ({ kind: "fn", name, args });
+const eq_  = (l: Node, r: Node): Eq  => ({ kind: "eq", left: l, right: r });
 
 function is_num(n: Node): n is Num { return n.kind === "num"; }
 function is_var(n: Node): n is Var { return n.kind === "var"; }
+function is_zero(n: Node): boolean { return is_num(n) && n.value === 0; }
+function is_one (n: Node): boolean { return is_num(n) && n.value === 1; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tokeniser
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GREEK = [
-	"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta",
-	"iota", "kappa", "lambda", "mu", "nu", "xi", "pi", "rho", "sigma", "tau",
-	"upsilon", "phi", "chi", "psi", "omega",
-	"Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta",
-	"Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi", "Pi", "Rho", "Sigma", "Tau",
-	"Upsilon", "Phi", "Chi", "Psi", "Omega",
+  "alpha","beta","gamma","delta","epsilon","zeta","eta","theta",
+  "iota","kappa","lambda","mu","nu","xi","pi","rho","sigma","tau",
+  "upsilon","phi","chi","psi","omega",
+  "Alpha","Beta","Gamma","Delta","Epsilon","Zeta","Eta","Theta",
+  "Iota","Kappa","Lambda","Mu","Nu","Xi","Pi","Rho","Sigma","Tau",
+  "Upsilon","Phi","Chi","Psi","Omega",
 ];
 
-// Named LaTeX commands that are variables/constants rather than functions
 const VARIABLE_COMMANDS = new Set([...GREEK, "infty", "infinity", "partial"]);
 
-// Commands that act as "modifier prefixes" — they combine with the NEXT token
-// to form a single compound variable name, e.g. \delta x → "\delta x"
-// \partial is also in VARIABLE_COMMANDS so it can stand alone; we handle the
-// "followed by letter/command" case specially in the parser.
 const MODIFIER_PREFIXES = new Set([
-	"delta", "Delta", "partial",
-	"nabla",   // ∇ — often used as operator prefix
+  "delta", "Delta", "partial", "nabla",
 ]);
 
-// Font / accent commands whose brace argument becomes the variable body.
-// e.g. \mathcal{L} → variable named "\mathcal{L}"
-//      \hat{x}     → variable named "\hat{x}"
-//      \vec{v}     → variable named "\vec{v}"
 const FONT_ACCENT_COMMANDS = new Set([
-	// Math font commands
-	"mathcal", "mathbb", "mathbf", "mathit", "mathrm", "mathsf", "mathtt", "mathfrak",
-	"boldsymbol", "bm", "pmb",
-	// Accent / decoration commands
-	"hat", "tilde", "bar", "vec", "dot", "ddot", "breve", "check", "acute", "grave",
-	"widehat", "widetilde", "overline", "underline", "overrightarrow", "overleftarrow",
-	"overbrace", "underbrace",
+  "mathcal","mathbb","mathbf","mathit","mathrm","mathsf","mathtt","mathfrak",
+  "boldsymbol","bm","pmb",
+  "hat","tilde","bar","vec","dot","ddot","breve","check","acute","grave",
+  "widehat","widetilde","overline","underline","overrightarrow","overleftarrow",
+  "overbrace","underbrace",
 ]);
 
-// Named functions we handle symbolically
 const KNOWN_FN = new Set([
-	"sin", "cos", "tan", "sec", "csc", "cot",
-	"arcsin", "arccos", "arctan",
-	"sinh", "cosh", "tanh",
-	"ln", "log", "exp", "sqrt", "abs", "sgn",
+  "sin","cos","tan","sec","csc","cot",
+  "arcsin","arccos","arctan",
+  "sinh","cosh","tanh",
+  "ln","log","exp","sqrt","abs","sgn",
 ]);
 
 type TokenKind =
-	| "num" | "ident" | "latex_cmd" | "op" | "lparen" | "rparen"
-	| "lbrace" | "rbrace" | "lbracket" | "rbracket"
-	| "eq" | "hat" | "underscore" | "comma" | "eof";
+  | "num" | "ident" | "latex_cmd" | "op" | "lparen" | "rparen"
+  | "lbrace" | "rbrace" | "lbracket" | "rbracket"
+  | "eq" | "hat" | "underscore" | "comma" | "eof";
 
 interface Token { kind: TokenKind; value: string }
 
 function tokenise(latex: string): Token[] {
-	// Normalise whitespace and strip display-math wrappers
-	let s = latex.trim()
-		.replace(/^\s*\$\$?\s*/, "").replace(/\s*\$?\$\s*$/, "")
-		.replace(/\\left\s*/g, "").replace(/\\right\s*/g, "")
-		.replace(/\\!/g, "").replace(/\\,/g, "").replace(/\\;/g, "")
-		.replace(/\\quad/g, "").replace(/\\qquad/g, "")
-		.replace(/\s+/g, " ");
+  let s = latex.trim()
+    .replace(/^\s*\$\$?\s*/, "").replace(/\s*\$?\$\s*$/, "")
+    .replace(/\\left\s*/g,  "").replace(/\\right\s*/g, "")
+    .replace(/\\!/g,    "").replace(/\\,/g,     "").replace(/\\;/g, "")
+    .replace(/\\quad/g, "").replace(/\\qquad/g, "")
+    .replace(/\s+/g, " ");
 
-	const tokens: Token[] = [];
-	let i = 0;
+  const tokens: Token[] = [];
+  let i = 0;
 
-	while (i < s.length) {
-		const ch = s[i];
+  while (i < s.length) {
+    const ch = s[i];
 
-		// Whitespace
-		if (ch === " ") { i++; continue; }
+    if (ch === " ") { i++; continue; }
 
-		// Numbers (including decimals)
-		if (/\d/.test(ch) || (ch === "." && /\d/.test(s[i + 1] ?? ""))) {
-			let num = "";
-			while (i < s.length && /[\d.]/.test(s[i])) num += s[i++];
-			tokens.push({ kind: "num", value: num });
-			continue;
-		}
+    if (/\d/.test(ch) || (ch === "." && /\d/.test(s[i+1] ?? ""))) {
+      let n = "";
+      while (i < s.length && /[\d.]/.test(s[i])) n += s[i++];
+      tokens.push({ kind: "num", value: n });
+      continue;
+    }
 
-		// Latin letter identifier
-		if (/[a-zA-Z]/.test(ch)) {
-			tokens.push({ kind: "ident", value: ch });
-			i++;
-			continue;
-		}
+    if (/[a-zA-Z]/.test(ch)) {
+      tokens.push({ kind: "ident", value: ch });
+      i++;
+      continue;
+    }
 
-		// LaTeX commands
-		if (ch === "\\") {
-			i++; // consume backslash
-			let cmd = "";
-			if (i < s.length && /[a-zA-Z]/.test(s[i])) {
-				while (i < s.length && /[a-zA-Z]/.test(s[i])) cmd += s[i++];
-			} else if (i < s.length) {
-				cmd = s[i++];
-			}
-			// Map operator aliases
-			if (cmd === "cdot" || cmd === "times") {
-				tokens.push({ kind: "op", value: "*" });
-			} else if (cmd === "div") {
-				tokens.push({ kind: "op", value: "/" });
-			} else if (cmd === "pm") {
-				tokens.push({ kind: "op", value: "+" }); // approximate ±
-			} else if (cmd === "frac") {
-				tokens.push({ kind: "latex_cmd", value: "frac" });
-			} else if (cmd === "sqrt") {
-				tokens.push({ kind: "latex_cmd", value: "sqrt" });
-			} else {
-				tokens.push({ kind: "latex_cmd", value: cmd });
-			}
-			continue;
-		}
+    if (ch === "\\") {
+      i++;
+      let cmd = "";
+      if (i < s.length && /[a-zA-Z]/.test(s[i])) {
+        while (i < s.length && /[a-zA-Z]/.test(s[i])) cmd += s[i++];
+      } else if (i < s.length) {
+        cmd = s[i++];
+      }
+      if      (cmd === "cdot" || cmd === "times") tokens.push({ kind: "op", value: "*" });
+      else if (cmd === "div")                     tokens.push({ kind: "op", value: "/" });
+      else if (cmd === "pm")                      tokens.push({ kind: "op", value: "±" });
+      else if (cmd === "mp")                      tokens.push({ kind: "op", value: "±" }); // ∓ treated as ±
+      else if (cmd === "frac")                    tokens.push({ kind: "latex_cmd", value: "frac" });
+      else if (cmd === "sqrt")                    tokens.push({ kind: "latex_cmd", value: "sqrt" });
+      else                                        tokens.push({ kind: "latex_cmd", value: cmd });
+      continue;
+    }
 
-		// Single-char operators and punctuation
-		switch (ch) {
-			case "+": tokens.push({ kind: "op", value: "+" }); break;
-			case "-": tokens.push({ kind: "op", value: "-" }); break;
-			case "*": tokens.push({ kind: "op", value: "*" }); break;
-			case "/": tokens.push({ kind: "op", value: "/" }); break;
-			case "^": tokens.push({ kind: "hat", value: "^" }); break;
-			case "_": tokens.push({ kind: "underscore", value: "_" }); break;
-			case "=": tokens.push({ kind: "eq", value: "=" }); break;
-			case "(": tokens.push({ kind: "lparen", value: "(" }); break;
-			case ")": tokens.push({ kind: "rparen", value: ")" }); break;
-			case "{": tokens.push({ kind: "lbrace", value: "{" }); break;
-			case "}": tokens.push({ kind: "rbrace", value: "}" }); break;
-			case "[": tokens.push({ kind: "lbracket", value: "[" }); break;
-			case "]": tokens.push({ kind: "rbracket", value: "]" }); break;
-			case ",": tokens.push({ kind: "comma", value: "," }); break;
-			default: /* ignore */ break;
-		}
-		i++;
-	}
+    switch (ch) {
+      case "+": tokens.push({ kind: "op",        value: "+" }); break;
+      case "-": tokens.push({ kind: "op",        value: "-" }); break;
+      case "*": tokens.push({ kind: "op",        value: "*" }); break;
+      case "/": tokens.push({ kind: "op",        value: "/" }); break;
+      case "^": tokens.push({ kind: "hat",       value: "^" }); break;
+      case "_": tokens.push({ kind: "underscore",value: "_" }); break;
+      case "=": tokens.push({ kind: "eq",        value: "=" }); break;
+      case "(": tokens.push({ kind: "lparen",    value: "(" }); break;
+      case ")": tokens.push({ kind: "rparen",    value: ")" }); break;
+      case "{": tokens.push({ kind: "lbrace",    value: "{" }); break;
+      case "}": tokens.push({ kind: "rbrace",    value: "}" }); break;
+      case "[": tokens.push({ kind: "lbracket",  value: "[" }); break;
+      case "]": tokens.push({ kind: "rbracket",  value: "]" }); break;
+      case ",": tokens.push({ kind: "comma",     value: "," }); break;
+      default: break;
+    }
+    i++;
+  }
 
-	tokens.push({ kind: "eof", value: "" });
-	return tokens;
+  tokens.push({ kind: "eof", value: "" });
+  return tokens;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -204,354 +185,291 @@ function tokenise(latex: string): Token[] {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Parser {
-	private tokens: Token[];
-	private pos = 0;
+  private tokens: Token[];
+  private pos = 0;
 
-	constructor(tokens: Token[]) { this.tokens = tokens; }
+  constructor(tokens: Token[]) { this.tokens = tokens; }
 
-	private peek(): Token { return this.tokens[this.pos]; }
-	private consume(): Token { return this.tokens[this.pos++]; }
-	private expect(kind: TokenKind, value?: string): Token {
-		const t = this.consume();
-		if (t.kind !== kind || (value !== undefined && t.value !== value))
-			throw new Error(`Expected ${kind}${value ? `(${value})` : ""}, got ${t.kind}(${t.value})`);
-		return t;
-	}
+  private peek():                Token { return this.tokens[this.pos]; }
+  private consume():             Token { return this.tokens[this.pos++]; }
+  private expect(kind: TokenKind, value?: string): Token {
+    const t = this.consume();
+    if (t.kind !== kind || (value !== undefined && t.value !== value))
+      throw new Error(`Expected ${kind}${value ? `(${value})` : ""}, got ${t.kind}(${t.value})`);
+    return t;
+  }
 
-	// ── Entry point ────────────────────────────────────────────────────────────
-	parseEquation(): Node {
-		const lhs = this.parseExpr();
-		if (this.peek().kind === "eq") {
-			this.consume();
-			const rhs = this.parseExpr();
-			return eq_(lhs, rhs);
-		}
-		return eq_(lhs, num(0));
-	}
+  parseEquation(): Node {
+    const lhs = this.parseExpr();
+    if (this.peek().kind === "eq") {
+      this.consume();
+      const rhs = this.parseExpr();
+      return eq_(lhs, rhs);
+    }
+    return eq_(lhs, num(0));
+  }
 
-	// expression = term ((+ | -) term)*
-	parseExpr(): Node {
-		let left = this.parseTerm();
-		while (true) {
-			const t = this.peek();
-			if (t.kind === "op" && t.value === "+") {
-				this.consume(); left = add(left, this.parseTerm());
-			} else if (t.kind === "op" && t.value === "-") {
-				this.consume(); left = sub(left, this.parseTerm());
-			} else {
-				break;
-			}
-		}
-		return left;
-	}
+  // expression = term ((+ | - | ±) term)*
+  parseExpr(): Node {
+    let left = this.parseTerm();
+    while (true) {
+      const t = this.peek();
+      if (t.kind === "op" && t.value === "+") {
+        this.consume(); left = add(left, this.parseTerm());
+      } else if (t.kind === "op" && t.value === "-") {
+        this.consume(); left = sub(left, this.parseTerm());
+      } else if (t.kind === "op" && t.value === "±") {
+        this.consume(); left = pm_(left, this.parseTerm());
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
 
-	// term = unary (('*' | '/') unary | implicit-mul)*
-	parseTerm(): Node {
-		let left = this.parseUnary();
-		while (true) {
-			const t = this.peek();
-			if (t.kind === "op" && t.value === "*") {
-				this.consume(); left = mul(left, this.parseUnary());
-			} else if (t.kind === "op" && t.value === "/") {
-				this.consume(); left = div(left, this.parseUnary());
-			} else if (t.kind === "latex_cmd" && t.value === "frac") {
-				this.consume();
-				const numerator = this.parseBraceGroup();
-				const denominator = this.parseBraceGroup();
-				left = mul(left, div(numerator, denominator));
-			} else if (this.isImplicitMulStart()) {
-				left = mul(left, this.parseUnary());
-			} else {
-				break;
-			}
-		}
-		return left;
-	}
+  parseTerm(): Node {
+    let left = this.parseUnary();
+    while (true) {
+      const t = this.peek();
+      if (t.kind === "op" && t.value === "*") {
+        this.consume(); left = mul(left, this.parseUnary());
+      } else if (t.kind === "op" && t.value === "/") {
+        this.consume(); left = div(left, this.parseUnary());
+      } else if (t.kind === "latex_cmd" && t.value === "frac") {
+        this.consume();
+        const numerator   = this.parseBraceGroup();
+        const denominator = this.parseBraceGroup();
+        left = mul(left, div(numerator, denominator));
+      } else if (this.isImplicitMulStart()) {
+        left = mul(left, this.parseUnary());
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
 
-	private isImplicitMulStart(): boolean {
-		const t = this.peek();
-		return (
-			t.kind === "num" ||
-			t.kind === "ident" ||
-			t.kind === "lparen" ||
-			t.kind === "lbrace" ||
-			(t.kind === "latex_cmd" && (
-				VARIABLE_COMMANDS.has(t.value) ||
-				MODIFIER_PREFIXES.has(t.value) ||
-				FONT_ACCENT_COMMANDS.has(t.value) ||
-				KNOWN_FN.has(t.value) ||
-				t.value === "frac" ||
-				t.value === "sqrt"
-			))
-		);
-	}
+  private isImplicitMulStart(): boolean {
+    const t = this.peek();
+    return (
+      t.kind === "num"   ||
+      t.kind === "ident" ||
+      t.kind === "lparen" ||
+      t.kind === "lbrace" ||
+      (t.kind === "latex_cmd" && (
+        VARIABLE_COMMANDS.has(t.value) ||
+        MODIFIER_PREFIXES.has(t.value) ||
+        FONT_ACCENT_COMMANDS.has(t.value) ||
+        KNOWN_FN.has(t.value) ||
+        t.value === "frac" ||
+        t.value === "sqrt"
+      ))
+    );
+  }
 
-	// unary = '-' unary | power
-	parseUnary(): Node {
-		if (this.peek().kind === "op" && this.peek().value === "-") {
-			this.consume();
-			return neg(this.parseUnary());
-		}
-		return this.parsePower();
-	}
+  parseUnary(): Node {
+    if (this.peek().kind === "op" && this.peek().value === "-") {
+      this.consume();
+      return neg(this.parseUnary());
+    }
+    return this.parsePower();
+  }
 
-	// power = atom ('^' braceOrAtom)*   (right-associative)
-	parsePower(): Node {
-		let base = this.parseAtom();
-		if (this.peek().kind === "hat") {
-			this.consume();
-			const exp = this.parseBraceOrAtom();
-			base = pow(base, exp);
-		}
-		return base;
-	}
+  parsePower(): Node {
+    let base = this.parseAtom();
+    if (this.peek().kind === "hat") {
+      this.consume();
+      const exp = this.parseBraceOrAtom();
+      base = pow(base, exp);
+    }
+    return base;
+  }
 
-	// atom = num | ident[_subscript] | latex_cmd(…) | '(' expr ')' | '{' expr '}'
-	parseAtom(): Node {
-		const t = this.peek();
+  parseAtom(): Node {
+    const t = this.peek();
 
-		// Number
-		if (t.kind === "num") {
-			this.consume();
-			return num(parseFloat(t.value));
-		}
+    if (t.kind === "num") {
+      this.consume();
+      return num(parseFloat(t.value));
+    }
 
-		// Single latin letter — may have subscript
-		if (t.kind === "ident") {
-			this.consume();
-			let name = t.value;
-			if (this.peek().kind === "underscore") {
-				this.consume();
-				name += "_" + this.parseSubscriptValue();
-			}
-			return var_(name);
-		}
+    if (t.kind === "ident") {
+      this.consume();
+      let name = t.value;
+      if (this.peek().kind === "underscore") {
+        this.consume();
+        name += "_" + this.parseSubscriptValue();
+      }
+      return var_(name);
+    }
 
-		// LaTeX command
-		if (t.kind === "latex_cmd") {
-			this.consume();
-			return this.parseCommand(t.value);
-		}
+    if (t.kind === "latex_cmd") {
+      this.consume();
+      return this.parseCommand(t.value);
+    }
 
-		// Parenthesised expression
-		if (t.kind === "lparen") {
-			this.consume();
-			const inner = this.parseExpr();
-			if (this.peek().kind === "rparen") this.consume();
-			return inner;
-		}
+    if (t.kind === "lparen") {
+      this.consume();
+      const inner = this.parseExpr();
+      if (this.peek().kind === "rparen") this.consume();
+      return inner;
+    }
 
-		// Brace-grouped expression
-		if (t.kind === "lbrace") {
-			return this.parseBraceGroup();
-		}
+    if (t.kind === "lbrace") {
+      return this.parseBraceGroup();
+    }
 
-		throw new Error(`Unexpected token: ${t.kind}(${t.value})`);
-	}
+    throw new Error(`Unexpected token: ${t.kind}(${t.value})`);
+  }
 
-	private parseCommand(cmd: string): Node {
+  private parseCommand(cmd: string): Node {
 
-		// ── Font / accent commands: \mathcal{X}, \hat{x}, \vec{v}, etc.
-		// These wrap their argument and the whole thing is ONE variable.
-		if (FONT_ACCENT_COMMANDS.has(cmd)) {
-			// Argument must be in braces (or a single ident/cmd after the command)
-			const argNode = this.parseBraceOrAtom();
-			// Build a variable name like "\mathcal{L}" or "\hat{x}"
-			let baseName = nodeVarName(argNode) ?? nodeToLatex(argNode);
-			let name = `\\${cmd}{${baseName}}`;
-			// Allow subscript after the whole thing: \mathcal{H}_k
-			if (this.peek().kind === "underscore") {
-				this.consume();
-				name += "_" + this.parseSubscriptValue();
-			}
-			return var_(name);
-		}
+    if (FONT_ACCENT_COMMANDS.has(cmd)) {
+      const argNode = this.parseBraceOrAtom();
+      let baseName = argNode.kind === "var" ? argNode.name : nodeToLatex(argNode);
+      let name = `\\${cmd}{${baseName}}`;
+      if (this.peek().kind === "underscore") {
+        this.consume();
+        name += "_" + this.parseSubscriptValue();
+      }
+      return var_(name);
+    }
 
-		// ── Modifier prefixes: \delta x, \Delta t, \partial x
-		// The prefix fuses with the immediately following symbol to form one variable.
-		if (MODIFIER_PREFIXES.has(cmd)) {
-			const next = this.peek();
-			// If the next token is a letter or known command, absorb it
-			if (next.kind === "ident" || next.kind === "latex_cmd") {
-				this.consume(); // consume the next token
-				let suffix: string;
-				if (next.kind === "ident") {
-					suffix = next.value;
-				} else {
-					// It's a latex_cmd — could itself be a font/accent or greek
-					suffix = `\\${next.value}`;
-				}
-				let name = `\\${cmd} ${suffix}`;
-				// Allow subscript: \delta x_0
-				if (this.peek().kind === "underscore") {
-					this.consume();
-					name += "_" + this.parseSubscriptValue();
-				}
-				return var_(name);
-			}
-			// No following letter → treat as standalone variable (e.g. bare \partial)
-			let name = `\\${cmd}`;
-			if (this.peek().kind === "underscore") {
-				this.consume();
-				name += "_" + this.parseSubscriptValue();
-			}
-			return var_(name);
-		}
+    if (MODIFIER_PREFIXES.has(cmd)) {
+      const next = this.peek();
+      if (next.kind === "ident" || next.kind === "latex_cmd") {
+        this.consume();
+        const suffix = next.kind === "ident" ? next.value : `\\${next.value}`;
+        let name = `\\${cmd} ${suffix}`;
+        if (this.peek().kind === "underscore") {
+          this.consume();
+          name += "_" + this.parseSubscriptValue();
+        }
+        return var_(name);
+      }
+      let name = `\\${cmd}`;
+      if (this.peek().kind === "underscore") {
+        this.consume();
+        name += "_" + this.parseSubscriptValue();
+      }
+      return var_(name);
+    }
 
-		// ── Greek letters / constants → variable
-		if (VARIABLE_COMMANDS.has(cmd)) {
-			let name = `\\${cmd}`;
-			if (this.peek().kind === "underscore") {
-				this.consume();
-				name += "_" + this.parseSubscriptValue();
-			}
-			return var_(name);
-		}
+    if (VARIABLE_COMMANDS.has(cmd)) {
+      let name = `\\${cmd}`;
+      if (this.peek().kind === "underscore") {
+        this.consume();
+        name += "_" + this.parseSubscriptValue();
+      }
+      return var_(name);
+    }
 
-		// ── \sqrt[n]{x}  or  \sqrt{x}
-		if (cmd === "sqrt") {
-			let n: Node = num(2);
-			if (this.peek().kind === "lbracket") {
-				this.consume();
-				n = this.parseExpr();
-				this.expect("rbracket");
-			}
-			const arg = this.parseBraceGroup();
-			return pow(arg, div(num(1), n));
-		}
+    if (cmd === "sqrt") {
+      let n: Node = num(2);
+      if (this.peek().kind === "lbracket") {
+        this.consume();
+        n = this.parseExpr();
+        this.expect("rbracket");
+      }
+      const arg = this.parseBraceGroup();
+      return pow(arg, div(num(1), n));
+    }
 
-		// ── \frac{num}{denom}
-		if (cmd === "frac") {
-			const numerator = this.parseBraceGroup();
-			const denominator = this.parseBraceGroup();
-			return div(numerator, denominator);
-		}
+    if (cmd === "frac") {
+      const numerator   = this.parseBraceGroup();
+      const denominator = this.parseBraceGroup();
+      return div(numerator, denominator);
+    }
 
-		// ── \log_{base}{arg}  or  \log{arg}
-		if (cmd === "log") {
-			let base: Node = num(10);
-			if (this.peek().kind === "underscore") {
-				this.consume();
-				base = this.parseBraceOrAtom();
-			}
-			const arg = this.parseBraceOrAtom();
-			return fn_("log", arg, base);
-		}
+    if (cmd === "log") {
+      let base: Node = num(10);
+      if (this.peek().kind === "underscore") {
+        this.consume();
+        base = this.parseBraceOrAtom();
+      }
+      const arg = this.parseBraceOrAtom();
+      return fn_("log", arg, base);
+    }
 
-		// ── Known trig / analytic functions
-		if (KNOWN_FN.has(cmd)) {
-			const arg = this.parseBraceOrAtom();
-			return fn_(cmd, arg);
-		}
+    if (KNOWN_FN.has(cmd)) {
+      const arg = this.parseBraceOrAtom();
+      return fn_(cmd, arg);
+    }
 
-		// ── Unknown command — treat as variable
-		let name = `\\${cmd}`;
-		if (this.peek().kind === "underscore") {
-			this.consume();
-			name += "_" + this.parseSubscriptValue();
-		}
-		return var_(name);
-	}
+    let name = `\\${cmd}`;
+    if (this.peek().kind === "underscore") {
+      this.consume();
+      name += "_" + this.parseSubscriptValue();
+    }
+    return var_(name);
+  }
 
-	// Parse { expr }
-	private parseBraceGroup(): Node {
-		this.expect("lbrace");
-		const inner = this.parseExpr();
-		if (this.peek().kind === "rbrace") this.consume();
-		return inner;
-	}
+  private parseBraceGroup(): Node {
+    this.expect("lbrace");
+    const inner = this.parseExpr();
+    if (this.peek().kind === "rbrace") this.consume();
+    return inner;
+  }
 
-	// Parse either a brace group or a single atom
-	private parseBraceOrAtom(): Node {
-		if (this.peek().kind === "lbrace") return this.parseBraceGroup();
-		return this.parseAtom();
-	}
+  private parseBraceOrAtom(): Node {
+    if (this.peek().kind === "lbrace") return this.parseBraceGroup();
+    return this.parseAtom();
+  }
 
-	/**
-	 * Parse a subscript value, returning a raw string label.
-	 *
-	 * Subscripts are either a single token (_0, _n, _\alpha) or a braced group
-	 * (_{total}, _{n+1}).  For braced groups we scan ahead:
-	 *   - If the content contains NO operators/frac/pow we concatenate the
-	 *     tokens directly into a label string.  This means I_{total} → "I_total"
-	 *     instead of being split into I_t · o · t · a · l.
-	 *   - If operators are present (x_{n+1}) we fall back to full expression
-	 *     parsing and serialise via nodeToLatex so the subscript is still usable.
-	 */
-	private parseSubscriptValue(): string {
-		if (this.peek().kind !== "lbrace") {
-			// Single-token subscript: _0 _n _\alpha
-			const t = this.consume();
-			if (t.kind === "ident") return t.value;
-			if (t.kind === "num") return t.value;
-			if (t.kind === "latex_cmd") return `\\${t.value}`;
-			return t.value;
-		}
+  /**
+   * Parse a subscript value as a raw string label.
+   * Plain labels like {total}, {ij}, {n+1} are handled smartly:
+   *   - No operators inside → concatenate tokens directly (I_{total} → "I_total")
+   *   - Operators present   → full expression parse (x_{n+1} → "n+1")
+   */
+  private parseSubscriptValue(): string {
+    if (this.peek().kind !== "lbrace") {
+      const t = this.consume();
+      if (t.kind === "ident")     return t.value;
+      if (t.kind === "num")       return t.value;
+      if (t.kind === "latex_cmd") return `\\${t.value}`;
+      return t.value;
+    }
 
-		// Braced subscript — scan ahead to decide strategy
-		const savedPos = this.pos;
-		this.consume(); // consume {
+    const savedPos = this.pos;
+    this.consume(); // {
 
-		let depth = 1;
-		let hasOperator = false;
-		const labelTokens: Token[] = [];
+    let depth = 1;
+    let hasOperator = false;
+    const labelTokens: Token[] = [];
 
-		while (this.pos < this.tokens.length) {
-			const t = this.tokens[this.pos];
-			if (t.kind === "lbrace") {
-				depth++;
-				labelTokens.push(t);
-				this.pos++;
-				continue;
-			}
-			if (t.kind === "rbrace") {
-				depth--;
-				if (depth === 0) { this.pos++; break; }
-				labelTokens.push(t);
-				this.pos++;
-				continue;
-			}
-			if (t.kind === "eof") break;
-			if (
-				t.kind === "op" ||
-				t.kind === "hat" ||
-				(t.kind === "latex_cmd" && (t.value === "frac" || t.value === "sqrt"))
-			) {
-				hasOperator = true;
-			}
-			labelTokens.push(t);
-			this.pos++;
-		}
+    while (this.pos < this.tokens.length) {
+      const t = this.tokens[this.pos];
+      if (t.kind === "lbrace") { depth++; labelTokens.push(t); this.pos++; continue; }
+      if (t.kind === "rbrace") {
+        depth--;
+        if (depth === 0) { this.pos++; break; }
+        labelTokens.push(t); this.pos++; continue;
+      }
+      if (t.kind === "eof") break;
+      if (t.kind === "op" || t.kind === "hat" ||
+          (t.kind === "latex_cmd" && (t.value === "frac" || t.value === "sqrt")))
+        hasOperator = true;
+      labelTokens.push(t);
+      this.pos++;
+    }
 
-		if (hasOperator) {
-			// Fall back to expression parsing
-			this.pos = savedPos;
-			const node = this.parseBraceGroup();
-			return nodeToLatex(node);
-		}
+    if (hasOperator) {
+      this.pos = savedPos;
+      const node = this.parseBraceGroup();
+      return nodeToLatex(node);
+    }
 
-		// Plain label — concatenate tokens as text
-		let label = "";
-		for (const t of labelTokens) {
-			if (t.kind === "ident" || t.kind === "num") {
-				label += t.value;
-			} else if (t.kind === "latex_cmd") {
-				label += `\\${t.value}`;
-			} else if (t.kind === "comma") {
-				label += ",";
-			} else if (t.kind === "underscore") {
-				label += "_";
-			} else {
-				label += t.value;
-			}
-		}
-		return label;
-	}
-}
-
-// Helper: if a node is a plain variable, return its name; else null.
-function nodeVarName(n: Node): string | null {
-	return n.kind === "var" ? n.name : null;
+    let label = "";
+    for (const t of labelTokens) {
+      if      (t.kind === "ident" || t.kind === "num") label += t.value;
+      else if (t.kind === "latex_cmd")                 label += `\\${t.value}`;
+      else if (t.kind === "comma")                     label += ",";
+      else if (t.kind === "underscore")                label += "_";
+      else                                             label += t.value;
+    }
+    return label;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -559,18 +477,16 @@ function nodeVarName(n: Node): string | null {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function collectVars(node: Node, out = new Set<string>()): Set<string> {
-	switch (node.kind) {
-		case "var": out.add(node.name); break;
-		case "num": break;
-		case "neg": collectVars(node.arg, out); break;
-		case "fn": node.args.forEach(a => collectVars(a, out)); break;
-		case "eq":
-		case "add": case "sub": case "mul": case "div": case "pow":
-			collectVars(node.left, out);
-			collectVars(node.right, out);
-			break;
-	}
-	return out;
+  switch (node.kind) {
+    case "var": out.add(node.name); break;
+    case "num": break;
+    case "neg": collectVars(node.arg, out); break;
+    case "pm":  collectVars(node.base, out); collectVars(node.delta, out); break;
+    case "fn":  node.args.forEach(a => collectVars(a, out)); break;
+    case "eq": case "add": case "sub": case "mul": case "div": case "pow":
+      collectVars(node.left, out); collectVars(node.right, out); break;
+  }
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -578,75 +494,132 @@ function collectVars(node: Node, out = new Set<string>()): Set<string> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function simplify(n: Node): Node {
-	switch (n.kind) {
-		case "num":
-		case "var":
-			return n;
-		case "neg": {
-			const a = simplify(n.arg);
-			if (is_num(a)) return num(-a.value);
-			if (a.kind === "neg") return a.arg;
-			return neg(a);
-		}
-		case "add": {
-			const l = simplify(n.left), r = simplify(n.right);
-			if (is_num(l) && is_num(r)) return num(l.value + r.value);
-			if (is_num(l) && l.value === 0) return r;
-			if (is_num(r) && r.value === 0) return l;
-			return add(l, r);
-		}
-		case "sub": {
-			const l = simplify(n.left), r = simplify(n.right);
-			if (is_num(l) && is_num(r)) return num(l.value - r.value);
-			if (is_num(r) && r.value === 0) return l;
-			if (is_num(l) && l.value === 0) return neg(r);
-			if (nodeToLatex(l) === nodeToLatex(r)) return num(0);
-			return sub(l, r);
-		}
-		case "mul": {
-			const l = simplify(n.left), r = simplify(n.right);
-			if (is_num(l) && is_num(r)) return num(l.value * r.value);
-			if (is_num(l) && l.value === 0) return num(0);
-			if (is_num(r) && r.value === 0) return num(0);
-			if (is_num(l) && l.value === 1) return r;
-			if (is_num(r) && r.value === 1) return l;
-			if (is_num(l) && l.value === -1) return neg(r);
-			if (is_num(r) && r.value === -1) return neg(l);
-			return mul(l, r);
-		}
-		case "div": {
-			const l = simplify(n.left), r = simplify(n.right);
-			if (is_num(l) && is_num(r) && r.value !== 0) return num(l.value / r.value);
-			if (is_num(l) && l.value === 0) return num(0);
-			if (is_num(r) && r.value === 1) return l;
-			if (nodeToLatex(l) === nodeToLatex(r)) return num(1);
-			return div(l, r);
-		}
-		case "pow": {
-			const l = simplify(n.left), r = simplify(n.right);
-			if (is_num(l) && is_num(r)) return num(Math.pow(l.value, r.value));
-			if (is_num(r) && r.value === 1) return l;
-			if (is_num(r) && r.value === 0) return num(1);
-			if (is_num(l) && l.value === 1) return num(1);
-			return pow(l, r);
-		}
-		case "fn": {
-			const args = n.args.map(simplify);
-			if (args.length === 1 && is_num(args[0])) {
-				const v = args[0].value;
-				const fns: Record<string, (x: number) => number> = {
-					sin: Math.sin, cos: Math.cos, tan: Math.tan,
-					arcsin: Math.asin, arccos: Math.acos, arctan: Math.atan,
-					sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
-					ln: Math.log, exp: Math.exp, abs: Math.abs, sqrt: Math.sqrt,
-				};
-				if (n.name in fns) return num(fns[n.name](v));
-			}
-			return { ...n, args };
-		}
-		case "eq":
-			return eq_(simplify(n.left), simplify(n.right));
-	}
+  switch (n.kind) {
+    case "num":
+    case "var":
+      return n;
+    case "pm": {
+      const base  = simplify(n.base);
+      const delta = simplify(n.delta);
+      if (is_zero(delta)) return base;
+      return pm_(base, delta);
+    }
+    case "neg": {
+      const a = simplify(n.arg);
+      if (is_num(a)) return num(-a.value);
+      if (a.kind === "neg") return a.arg;
+      return neg(a);
+    }
+    case "add": {
+      const l = simplify(n.left), r = simplify(n.right);
+      if (is_num(l) && is_num(r)) return num(l.value + r.value);
+      if (is_zero(l)) return r;
+      if (is_zero(r)) return l;
+      // a + (-b)  →  a - b  (cleaner output, avoids "x + -c" rendering)
+      if (r.kind === "neg") return sub(l, simplify(r.arg));
+      return add(l, r);
+    }
+    case "sub": {
+      const l = simplify(n.left), r = simplify(n.right);
+      if (is_num(l) && is_num(r)) return num(l.value - r.value);
+      if (is_zero(r)) return l;
+      if (is_zero(l)) return neg(r);
+      if (nodeToLatex(l) === nodeToLatex(r)) return num(0);
+      return sub(l, r);
+    }
+    case "mul": {
+      const l = simplify(n.left), r = simplify(n.right);
+      if (is_num(l) && is_num(r)) return num(l.value * r.value);
+      if (is_zero(l) || is_zero(r)) return num(0);
+      if (is_one(l)) return r;
+      if (is_one(r)) return l;
+      if (is_num(l) && l.value === -1) return neg(r);
+      if (is_num(r) && r.value === -1) return neg(l);
+      // num * neg(expr)  →  neg(num * expr)  — pull negation outside
+      if (is_num(l) && r.kind === "neg") return simplify(neg(mul(l, r.arg)));
+      if (is_num(r) && l.kind === "neg") return simplify(neg(mul(r, l.arg)));
+      // neg * neg  →  pos
+      if (l.kind === "neg" && r.kind === "neg") return simplify(mul(l.arg, r.arg));
+      // num * (num/denom)  →  fold: e.g. 2*(1/2) → 1
+      if (is_num(l) && r.kind === "div" && is_num(r.left)) {
+        const product = l.value * r.left.value;
+        const denom = r.right;
+        if (is_num(denom)) {
+          return simplify(num(product / denom.value));
+        }
+        return simplify(div(num(product), denom));
+      }
+      // num * (frac * expr)  →  (num*frac) * expr: e.g. 2*(½a) → 1*a → a
+      if (is_num(l) && r.kind === "mul") {
+        if (r.left.kind === "div" && is_num(r.left.left) && is_num(r.left.right)) {
+          const foldedScalar = l.value * r.left.left.value / r.left.right.value;
+          return simplify(mul(num(foldedScalar), r.right));
+        }
+        if (r.right.kind === "div" && is_num(r.right.left) && is_num(r.right.right)) {
+          const foldedScalar = l.value * r.right.left.value / r.right.right.value;
+          return simplify(mul(num(foldedScalar), r.left));
+        }
+        // num * (num * expr)  →  (num*num) * expr
+        if (is_num(r.left)) return simplify(mul(num(l.value * r.left.value), r.right));
+        if (is_num(r.right)) return simplify(mul(num(l.value * r.right.value), r.left));
+      }
+      // (-v)^2 → v^2  (neg squared is positive)
+      return mul(l, r);
+    }
+    case "div": {
+      const l = simplify(n.left), r = simplify(n.right);
+      if (is_num(l) && is_num(r) && r.value !== 0) return num(l.value / r.value);
+      if (is_zero(l)) return num(0);
+      if (is_one(r))  return l;
+      if (nodeToLatex(l) === nodeToLatex(r)) return num(1);
+      // neg(a)/neg(b) → a/b
+      if (l.kind === "neg" && r.kind === "neg") return simplify(div(l.arg, r.arg));
+      return div(l, r);
+    }
+    case "pow": {
+      const l = simplify(n.left), r = simplify(n.right);
+      if (is_num(l) && is_num(r)) return num(Math.pow(l.value, r.value));
+      if (is_one(r)) return l;
+      if (is_zero(r)) return num(1);
+      if (is_one(l)) return num(1);
+      // (-x)^2 → x^2  (even integer exponent)
+      if (l.kind === "neg" && is_num(r) && Number.isInteger(r.value) && r.value % 2 === 0)
+        return simplify(pow(l.arg, r));
+      return pow(l, r);
+    }
+    case "fn": {
+      const args = n.args.map(simplify);
+      if (args.length === 1 && is_num(args[0])) {
+        const v = args[0].value;
+        const fns: Record<string, (x: number) => number> = {
+          sin: Math.sin, cos: Math.cos, tan: Math.tan,
+          arcsin: Math.asin, arccos: Math.acos, arctan: Math.atan,
+          sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
+          ln: Math.log, exp: Math.exp, abs: Math.abs,
+        };
+        if (n.name in fns) return num(fns[n.name](v));
+      }
+      return { ...n, args };
+    }
+    case "eq":
+      return eq_(simplify(n.left), simplify(n.right));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// deepSimplify — apply simplify until fixed point
+// ─────────────────────────────────────────────────────────────────────────────
+
+function deepSimplify(n: Node): Node {
+  let prev = "";
+  let cur = n;
+  for (let i = 0; i < 20; i++) {
+    cur = simplify(cur);
+    const s = nodeToLatex(cur);
+    if (s === prev) break;
+    prev = s;
+  }
+  return cur;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -654,98 +627,338 @@ function simplify(n: Node): Node {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function containsVar(node: Node, varName: string): boolean {
-	switch (node.kind) {
-		case "var": return node.name === varName;
-		case "num": return false;
-		case "neg": return containsVar(node.arg, varName);
-		case "fn": return node.args.some(a => containsVar(a, varName));
-		case "eq": case "add": case "sub": case "mul": case "div": case "pow":
-			return containsVar(node.left, varName) || containsVar(node.right, varName);
-	}
+  switch (node.kind) {
+    case "var": return node.name === varName;
+    case "num": return false;
+    case "neg": return containsVar(node.arg, varName);
+    case "pm":  return containsVar(node.base, varName) || containsVar(node.delta, varName);
+    case "fn":  return node.args.some(a => containsVar(a, varName));
+    case "eq": case "add": case "sub": case "mul": case "div": case "pow":
+      return containsVar(node.left, varName) || containsVar(node.right, varName);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Polynomial coefficient extraction
+//
+// Tries to express `expr` as a polynomial in `target`:
+//   c[0] + c[1]*target + c[2]*target^2 + ...
+// where each c[i] is a Node that does NOT contain `target`.
+//
+// Returns null if the expression is not a polynomial in `target`
+// (e.g. target appears inside sin(), in a denominator, in an exponent, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type PolyCoeffs = Map<number, Node>; // power → coefficient node
+
+function addPoly(a: PolyCoeffs, b: PolyCoeffs): PolyCoeffs {
+  const result = new Map(a);
+  for (const [p, c] of b) {
+    result.set(p, result.has(p) ? add(result.get(p)!, c) : c);
+  }
+  return result;
+}
+
+function scalePoly(poly: PolyCoeffs, scalar: Node, negate = false): PolyCoeffs {
+  const result = new Map<number, Node>();
+  for (const [p, c] of poly) {
+    let term: Node;
+    if (is_one(scalar)) {
+      term = negate ? neg(c) : c;
+    } else {
+      // Fold negation into scalar coefficient when scalar is numeric
+      const s = negate
+        ? (is_num(scalar) ? num(-scalar.value) : neg(scalar))
+        : scalar;
+      const sSimp = is_num(s) ? s : s; // keep as-is
+      term = (is_num(sSimp) && sSimp.value === 1) ? c : mul(sSimp, c);
+    }
+    result.set(p, term);
+  }
+  return result;
+}
+
+function mulPolyPoly(a: PolyCoeffs, b: PolyCoeffs): PolyCoeffs {
+  const result = new Map<number, Node>();
+  for (const [pa, ca] of a) {
+    for (const [pb, cb] of b) {
+      const p = pa + pb;
+      const term = is_one(ca) ? cb : is_one(cb) ? ca : mul(ca, cb);
+      result.set(p, result.has(p) ? add(result.get(p)!, term) : term);
+    }
+  }
+  return result;
+}
+
+/**
+ * Try to extract polynomial coefficients of `target` from `node`.
+ * Returns null if `node` is not a polynomial in `target`.
+ */
+function extractPoly(node: Node, target: string): PolyCoeffs | null {
+  node = simplify(node);
+
+  // Constant term (no target)
+  if (!containsVar(node, target)) {
+    return new Map([[0, node]]);
+  }
+
+  // The variable itself
+  if (is_var(node) && node.name === target) {
+    return new Map([[1, num(1)]]);
+  }
+
+  switch (node.kind) {
+    case "neg": {
+      const inner = extractPoly(node.arg, target);
+      if (!inner) return null;
+      return scalePoly(inner, num(1), true);
+    }
+
+    case "add": {
+      const l = extractPoly(node.left,  target);
+      const r = extractPoly(node.right, target);
+      if (!l || !r) return null;
+      return addPoly(l, r);
+    }
+
+    case "sub": {
+      const l = extractPoly(node.left,  target);
+      const r = extractPoly(node.right, target);
+      if (!l || !r) return null;
+      return addPoly(l, scalePoly(r, num(1), true));
+    }
+
+    case "mul": {
+      const lHas = containsVar(node.left,  target);
+      const rHas = containsVar(node.right, target);
+      if (lHas && rHas) {
+        // Both sides contain target — need to multiply two polynomials
+        const lp = extractPoly(node.left,  target);
+        const rp = extractPoly(node.right, target);
+        if (!lp || !rp) return null;
+        return mulPolyPoly(lp, rp);
+      }
+      if (lHas) {
+        const lp = extractPoly(node.left, target);
+        if (!lp) return null;
+        return scalePoly(lp, node.right);
+      }
+      if (rHas) {
+        const rp = extractPoly(node.right, target);
+        if (!rp) return null;
+        return scalePoly(rp, node.left);
+      }
+      return new Map([[0, node]]);
+    }
+
+    case "div": {
+      // Only allow target in numerator with constant denominator
+      if (containsVar(node.right, target)) return null;
+      const lp = extractPoly(node.left, target);
+      if (!lp) return null;
+      return scalePoly(lp, div(num(1), node.right));
+    }
+
+    case "pow": {
+      // x^n where n is a non-negative integer constant
+      if (!containsVar(node.left, target)) return null; // base doesn't have target → constant
+      if (containsVar(node.right, target)) return null; // exponent has target → not polynomial
+      if (!is_var(node.left) || node.left.name !== target) {
+        // Could be (expr_with_target)^n — try if expr is just the variable
+        return null;
+      }
+      const exp = simplify(node.right);
+      if (!is_num(exp) || !Number.isInteger(exp.value) || exp.value < 0) return null;
+      return new Map([[exp.value, num(1)]]);
+    }
+
+    default:
+      return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Polynomial solver: solves poly(target) = 0 for target
+// Returns array of solution Nodes (may include pm_ nodes for ±)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function solvePoly(coeffs: PolyCoeffs, _target: string): Node[] | null {
+  // Simplify all coefficients
+  const c = new Map<number, Node>();
+  for (const [p, coef] of coeffs) {
+    const s = simplify(coef);
+    if (!(is_num(s) && s.value === 0)) c.set(p, s);
+  }
+
+  const maxDeg = c.size === 0 ? 0 : Math.max(...c.keys());
+  const getC = (p: number): Node => c.get(p) ?? num(0);
+
+  // ── Degree 0: constant = 0, no solution or trivially true
+  if (maxDeg === 0) return null;
+
+  // ── Degree 1: a*x + b = 0  →  x = -b/a
+  if (maxDeg === 1) {
+    const a = simplify(getC(1));
+    const b = simplify(getC(0));
+    // If b=0 then x=0 is trivial (variable cancels). Return null to signal
+    // "unsolvable" (e.g. m appears on both sides of ½mv²=mgh and cancels).
+    if (is_zero(b)) return null;
+    // Special case: if b is neg(expr), return expr/a directly (double-neg)
+    if (b.kind === "neg") return [deepSimplify(div(b.arg, a))];
+    return [deepSimplify(neg(div(b, a)))];
+  }
+
+  // ── Degree 2: a*x² + b*x + c = 0  →  quadratic formula
+  if (maxDeg === 2) {
+    const a  = simplify(getC(2));
+    const b  = simplify(getC(1));
+    const c0 = simplify(getC(0));
+
+    // Discriminant: b² - 4ac
+    const discriminant = simplify(sub(pow(b, num(2)), mul(num(4), mul(a, c0))));
+    const sqrtDisc     = simplify(pow(discriminant, div(num(1), num(2))));
+    const denominator  = simplify(mul(num(2), a));
+
+    if (is_zero(b)) {
+      // No linear term: ax² + c = 0  →  x = ±√(-c/a)
+      const inner = simplify(neg(div(c0, a)));
+      return [pm_(num(0), simplify(pow(inner, div(num(1), num(2)))))];
+    }
+
+    // Full quadratic formula: x = (-b ± √(b²-4ac)) / (2a)
+    // Run an extra deep-simplify pass to collapse things like 2*(½a) → a,
+    // (-v)² → v², etc.
+    const negB = deepSimplify(neg(b));
+    const denom2 = deepSimplify(denominator);
+    const disc2  = deepSimplify(discriminant);
+    const sqrt2  = deepSimplify(pow(disc2, div(num(1), num(2))));
+    return [pm_(deepSimplify(div(negB, denom2)), deepSimplify(div(sqrt2, denom2)))];
+  }
+
+  // ── Degree 3 (depressed cubic only): x³ + px + q = 0
+  // Cardano's formula for the case where the x² coefficient is zero
+  if (maxDeg === 3) {
+    const a3 = getC(3);
+    const a2 = getC(2);
+    const a1 = getC(1);
+    const a0 = getC(0);
+
+    // Only handle monic or reducible to depressed cubic without x² term
+    // For general cubic ax³+bx²+cx+d, substitute x = t - b/(3a) to depress
+    // We'll return null for now unless it's already depressed (a2=0)
+    // and monic (a3=1) for readability
+    if (!is_zero(a2)) return null; // non-depressed cubic — too complex
+
+    // Depressed cubic: a3*t³ + a1*t + a0 = 0
+    // Normalise: t³ + p*t + q = 0
+    const p_node = simplify(div(a1, a3));
+    const q_node = simplify(div(a0, a3));
+
+    // Cardano discriminant: Δ = -(4p³ + 27q²)
+    // Real solution: t = ∛(-q/2 + √(q²/4 + p³/27)) + ∛(-q/2 - √(q²/4 + p³/27))
+    const inner = add(div(pow(q_node, num(2)), num(4)), div(pow(p_node, num(3)), num(27)));
+    const sqrtInner = pow(simplify(inner), div(num(1), num(2)));
+    const halfQ = div(neg(q_node), num(2));
+    const cbrt1 = pow(add(halfQ, sqrtInner), div(num(1), num(3)));
+    const cbrt2 = pow(sub(halfQ, sqrtInner), div(num(1), num(3)));
+    return [simplify(add(cbrt1, cbrt2))];
+  }
+
+  return null; // degree > 3 not handled
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Algebraic solver: isolate `target` variable on the LHS
+// Returns a single Node (possibly pm_ for ±)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function isolate(lhs: Node, rhs: Node, target: string): Node | null {
-	lhs = simplify(lhs);
-	rhs = simplify(rhs);
+  lhs = simplify(lhs);
+  rhs = simplify(rhs);
 
-	if (is_var(lhs) && lhs.name === target) return simplify(rhs);
-	if (is_num(lhs)) return null;
-	if (is_var(lhs)) return null;
+  if (is_var(lhs) && lhs.name === target) return simplify(rhs);
+  if (is_num(lhs)) return null;
+  if (is_var(lhs)) return null;
 
-	switch (lhs.kind) {
-		case "neg":
-			return isolate(lhs.arg, neg(rhs), target);
+  switch (lhs.kind) {
+    case "neg":
+      return isolate(lhs.arg, neg(rhs), target);
 
-		case "add": {
-			if (containsVar(lhs.left, target))
-				return isolate(lhs.left, sub(rhs, lhs.right), target);
-			if (containsVar(lhs.right, target))
-				return isolate(lhs.right, sub(rhs, lhs.left), target);
-			return null;
-		}
-		case "sub": {
-			if (containsVar(lhs.left, target))
-				return isolate(lhs.left, add(rhs, lhs.right), target);
-			if (containsVar(lhs.right, target))
-				return isolate(lhs.right, sub(lhs.left, rhs), target);
-			return null;
-		}
-		case "mul": {
-			if (containsVar(lhs.left, target))
-				return isolate(lhs.left, div(rhs, lhs.right), target);
-			if (containsVar(lhs.right, target))
-				return isolate(lhs.right, div(rhs, lhs.left), target);
-			return null;
-		}
-		case "div": {
-			if (containsVar(lhs.left, target))
-				return isolate(lhs.left, mul(rhs, lhs.right), target);
-			if (containsVar(lhs.right, target))
-				return isolate(lhs.right, div(lhs.left, rhs), target);
-			return null;
-		}
-		case "pow": {
-			if (containsVar(lhs.left, target))
-				return isolate(lhs.left, pow(rhs, div(num(1), lhs.right)), target);
-			if (containsVar(lhs.right, target))
-				return isolate(lhs.right, div(fn_("ln", rhs), fn_("ln", lhs.left)), target);
-			return null;
-		}
-		case "fn": {
-			const arg0 = lhs.args[0];
-			if (!arg0 || !containsVar(arg0, target)) return null;
+    case "add": {
+      if (containsVar(lhs.left, target))
+        return isolate(lhs.left, sub(rhs, lhs.right), target);
+      if (containsVar(lhs.right, target))
+        return isolate(lhs.right, sub(rhs, lhs.left), target);
+      return null;
+    }
+    case "sub": {
+      if (containsVar(lhs.left, target))
+        return isolate(lhs.left, add(rhs, lhs.right), target);
+      if (containsVar(lhs.right, target))
+        return isolate(lhs.right, sub(lhs.left, rhs), target);
+      return null;
+    }
+    case "mul": {
+      if (containsVar(lhs.left, target))
+        return isolate(lhs.left, div(rhs, lhs.right), target);
+      if (containsVar(lhs.right, target))
+        return isolate(lhs.right, div(rhs, lhs.left), target);
+      return null;
+    }
+    case "div": {
+      if (containsVar(lhs.left, target))
+        return isolate(lhs.left, mul(rhs, lhs.right), target);
+      if (containsVar(lhs.right, target))
+        return isolate(lhs.right, div(lhs.left, rhs), target);
+      return null;
+    }
+    case "pow": {
+      if (containsVar(lhs.left, target)) {
+        const expS = simplify(lhs.right);
+        // Even integer exponent → ± result
+        if (is_num(expS) && Number.isInteger(expS.value) && expS.value % 2 === 0 && expS.value > 0) {
+          const root = pow(rhs, div(num(1), expS));
+          return pm_(num(0), simplify(root));
+        }
+        return isolate(lhs.left, pow(rhs, div(num(1), lhs.right)), target);
+      }
+      if (containsVar(lhs.right, target))
+        return isolate(lhs.right, div(fn_("ln", rhs), fn_("ln", lhs.left)), target);
+      return null;
+    }
+    case "fn": {
+      const arg0 = lhs.args[0];
+      if (!arg0 || !containsVar(arg0, target)) return null;
 
-			const inverses: Record<string, (r: Node, args: Node[]) => Node> = {
-				ln: (r) => fn_("exp", r),
-				exp: (r) => fn_("ln", r),
-				sin: (r) => fn_("arcsin", r),
-				cos: (r) => fn_("arccos", r),
-				tan: (r) => fn_("arctan", r),
-				arcsin: (r) => fn_("sin", r),
-				arccos: (r) => fn_("cos", r),
-				arctan: (r) => fn_("tan", r),
-				sinh: (r) => fn_("arcsinh", r),
-				cosh: (r) => fn_("arccosh", r),
-				tanh: (r) => fn_("arctanh", r),
-				abs: (r) => r,
-				log: (r, args) => pow(args[1] ?? num(10), r),
-			};
+      const inverses: Record<string, (r: Node, args: Node[]) => Node> = {
+        ln:     (r)       => fn_("exp", r),
+        exp:    (r)       => fn_("ln", r),
+        sin:    (r)       => fn_("arcsin", r),
+        cos:    (r)       => fn_("arccos", r),
+        tan:    (r)       => fn_("arctan", r),
+        arcsin: (r)       => fn_("sin", r),
+        arccos: (r)       => fn_("cos", r),
+        arctan: (r)       => fn_("tan", r),
+        sinh:   (r)       => fn_("arcsinh", r),
+        cosh:   (r)       => fn_("arccosh", r),
+        tanh:   (r)       => fn_("arctanh", r),
+        abs:    (r)       => pm_(num(0), r),  // |x|=k → x=±k
+        log:    (r, args) => pow(args[1] ?? num(10), r),
+      };
 
-			if (lhs.name in inverses) {
-				const inv = inverses[lhs.name](rhs, lhs.args);
-				return isolate(arg0, inv, target);
-			}
-			if (lhs.name === "sqrt") {
-				return isolate(arg0, pow(rhs, num(2)), target);
-			}
-			return null;
-		}
-	}
-	return null;
+      if (lhs.name in inverses) {
+        const inv = inverses[lhs.name](rhs, lhs.args);
+        return isolate(arg0, inv, target);
+      }
+      if (lhs.name === "sqrt") {
+        return isolate(arg0, pow(rhs, num(2)), target);
+      }
+      return null;
+    }
+    case "pm":
+      return null; // ± on LHS — don't try to isolate further
+  }
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -753,91 +966,97 @@ function isolate(lhs: Node, rhs: Node, target: string): Node | null {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function needsParens(node: Node, parentKind: NodeKind): boolean {
-	if (node.kind === "add" || node.kind === "sub")
-		return parentKind === "mul" || parentKind === "div" || parentKind === "pow" || parentKind === "neg";
-	if (node.kind === "neg")
-		return parentKind === "pow";
-	return false;
+  if (node.kind === "add" || node.kind === "sub" || node.kind === "pm")
+    return parentKind === "mul" || parentKind === "div" || parentKind === "pow" || parentKind === "neg";
+  if (node.kind === "neg")
+    return parentKind === "pow";
+  return false;
 }
 
 function wrap(node: Node, parentKind: NodeKind): string {
-	const s = nodeToLatex(node);
-	return needsParens(node, parentKind) ? `\\left(${s}\\right)` : s;
+  const s = nodeToLatex(node);
+  return needsParens(node, parentKind) ? `\\left(${s}\\right)` : s;
 }
 
 function nodeToLatex(node: Node): string {
-	switch (node.kind) {
-		case "num": {
-			const v = node.value;
-			if (Number.isFinite(v) && !Number.isInteger(v)) {
-				for (const d of [2, 3, 4, 5, 6, 7, 8, 9, 10, 12]) {
-					const n = Math.round(v * d);
-					if (Math.abs(n / d - v) < 1e-10) {
-						if (n < 0) return `-\\frac{${-n}}{${d}}`;
-						return `\\frac{${n}}{${d}}`;
-					}
-				}
-			}
-			return String(v);
-		}
-		case "var":
-			return node.name;
-		case "neg":
-			return `-${wrap(node.arg, "neg")}`;
-		case "add":
-			return `${nodeToLatex(node.left)} + ${nodeToLatex(node.right)}`;
-		case "sub": {
-			const r = node.right;
-			const rStr = (r.kind === "add" || r.kind === "sub")
-				? `\\left(${nodeToLatex(r)}\\right)`
-				: nodeToLatex(r);
-			return `${nodeToLatex(node.left)} - ${rStr}`;
-		}
-		case "mul": {
-			const l = wrap(node.left, "mul");
-			const r = wrap(node.right, "mul");
-			const rNode = node.right;
-			const lNode = node.left;
-			const rIsAlpha = rNode.kind === "var" || rNode.kind === "fn" ||
-				(rNode.kind === "pow" && (rNode.left.kind === "var" || rNode.left.kind === "fn"));
-			const lIsNum = lNode.kind === "num";
-			if (lIsNum && rIsAlpha) return `${l} ${r}`;
-			return `${l} \\cdot ${r}`;
-		}
-		case "div":
-			return `\\frac{${nodeToLatex(node.left)}}{${nodeToLatex(node.right)}}`;
-		case "pow": {
-			const base = node.left;
-			const bStr = (base.kind === "var" || base.kind === "num")
-				? nodeToLatex(base)
-				: `\\left(${nodeToLatex(base)}\\right)`;
-			return `${bStr}^{${nodeToLatex(node.right)}}`;
-		}
-		case "fn": {
-			const latexNames: Record<string, string> = {
-				arcsin: "\\arcsin", arccos: "\\arccos", arctan: "\\arctan",
-				arcsinh: "\\text{arcsinh}", arccosh: "\\text{arccosh}", arctanh: "\\text{arctanh}",
-				sin: "\\sin", cos: "\\cos", tan: "\\tan",
-				sinh: "\\sinh", cosh: "\\cosh", tanh: "\\tanh",
-				ln: "\\ln", exp: "\\exp",
-				log: "\\log",
-				sqrt: "\\sqrt",
-			};
-			if (node.name === "abs") {
-				return `\\left|${nodeToLatex(node.args[0])}\\right|`;
-			}
-			if (node.name === "log" && node.args.length === 2) {
-				return `\\log_{${nodeToLatex(node.args[1])}} ${nodeToLatex(node.args[0])}`;
-			}
-			const cmd = latexNames[node.name] ?? `\\${node.name}`;
-			if (node.args.length === 1) {
-				return `${cmd}\\left(${nodeToLatex(node.args[0])}\\right)`;
-			}
-			return `${cmd}\\left(${node.args.map(nodeToLatex).join(", ")}\\right)`;
-		}
-		case "eq":
-			return `${nodeToLatex(node.left)} = ${nodeToLatex(node.right)}`;
-	}
+  switch (node.kind) {
+    case "num": {
+      const v = node.value;
+      if (Number.isFinite(v) && !Number.isInteger(v)) {
+        for (const d of [2,3,4,5,6,7,8,9,10,12]) {
+          const n = Math.round(v * d);
+          if (Math.abs(n / d - v) < 1e-10) {
+            if (n < 0) return `-\\frac{${-n}}{${d}}`;
+            return `\\frac{${n}}{${d}}`;
+          }
+        }
+      }
+      return String(v);
+    }
+    case "var":
+      return node.name;
+    case "neg":
+      return `-${wrap(node.arg, "neg")}`;
+    case "pm": {
+      // base=0 means "pure ±": ±delta  →  \pm delta
+      // otherwise: base ± delta
+      const deltaStr = wrap(node.delta, "add");
+      if (is_zero(node.base)) return `\\pm ${deltaStr}`;
+      return `${nodeToLatex(node.base)} \\pm ${deltaStr}`;
+    }
+    case "add":
+      return `${nodeToLatex(node.left)} + ${nodeToLatex(node.right)}`;
+    case "sub": {
+      const r = node.right;
+      const rStr = (r.kind === "add" || r.kind === "sub" || r.kind === "pm")
+        ? `\\left(${nodeToLatex(r)}\\right)`
+        : nodeToLatex(r);
+      return `${nodeToLatex(node.left)} - ${rStr}`;
+    }
+    case "mul": {
+      const l = wrap(node.left, "mul");
+      const r = wrap(node.right, "mul");
+      const rNode = node.right;
+      const lNode = node.left;
+      const rIsAlpha = rNode.kind === "var" || rNode.kind === "fn" ||
+        (rNode.kind === "pow" && (rNode.left.kind === "var" || rNode.left.kind === "fn"));
+      const lIsNum = lNode.kind === "num";
+      if (lIsNum && rIsAlpha) return `${l} ${r}`;
+      return `${l} \\cdot ${r}`;
+    }
+    case "div":
+      return `\\frac{${nodeToLatex(node.left)}}{${nodeToLatex(node.right)}}`;
+    case "pow": {
+      const base = node.left;
+      const bStr = (base.kind === "var" || base.kind === "num")
+        ? nodeToLatex(base)
+        : `\\left(${nodeToLatex(base)}\\right)`;
+      return `${bStr}^{${nodeToLatex(node.right)}}`;
+    }
+    case "fn": {
+      const latexNames: Record<string, string> = {
+        arcsin: "\\arcsin", arccos: "\\arccos", arctan: "\\arctan",
+        arcsinh: "\\text{arcsinh}", arccosh: "\\text{arccosh}", arctanh: "\\text{arctanh}",
+        sin: "\\sin", cos: "\\cos", tan: "\\tan",
+        sinh: "\\sinh", cosh: "\\cosh", tanh: "\\tanh",
+        ln: "\\ln", exp: "\\exp",
+        log: "\\log",
+      };
+      if (node.name === "abs") {
+        return `\\left|${nodeToLatex(node.args[0])}\\right|`;
+      }
+      if (node.name === "log" && node.args.length === 2) {
+        return `\\log_{${nodeToLatex(node.args[1])}} ${nodeToLatex(node.args[0])}`;
+      }
+      const cmd = latexNames[node.name] ?? `\\${node.name}`;
+      if (node.args.length === 1) {
+        return `${cmd}\\left(${nodeToLatex(node.args[0])}\\right)`;
+      }
+      return `${cmd}\\left(${node.args.map(nodeToLatex).join(", ")}\\right)`;
+    }
+    case "eq":
+      return `${nodeToLatex(node.left)} = ${nodeToLatex(node.right)}`;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -845,64 +1064,115 @@ function nodeToLatex(node: Node): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface RearrangementResult {
-	/** The variable being isolated. */
-	variable: string;
-	/** The rearranged equation as a LaTeX string. */
-	latex: string;
-	/** True if the rearrangement was successfully solved. */
-	solved: boolean;
-	/** Reason if not solved. */
-	reason?: string;
+  /** The variable being isolated, e.g. "x" */
+  variable: string;
+  /** The rearranged equation as a LaTeX string */
+  latex: string;
+  /** True if the rearrangement was successfully solved */
+  solved: boolean;
+  /** Reason if not solved */
+  reason?: string;
 }
 
 /**
  * Takes a LaTeX equation (or expression = 0) and returns all rearrangements,
  * one per variable found in the equation.
+ *
+ * Results may contain \pm for equations with two solutions (e.g. quadratics).
  */
 export function rearrangeLatex(latex: string): RearrangementResult[] {
-	let equation: Node;
-	try {
-		const tokens = tokenise(latex);
-		const parser = new Parser(tokens);
-		equation = parser.parseEquation();
-	} catch (err) {
-		return [{ variable: "?", latex, solved: false, reason: `Parse error: ${err}` }];
-	}
+  let equation: Node;
+  try {
+    const tokens = tokenise(latex);
+    const parser = new Parser(tokens);
+    equation = parser.parseEquation();
+  } catch (err) {
+    return [{ variable: "?", latex, solved: false, reason: `Parse error: ${err}` }];
+  }
 
-	const vars = Array.from(collectVars(equation)).sort();
+  const vars = Array.from(collectVars(equation)).sort();
 
-	if (vars.length === 0)
-		return [{ variable: "?", latex, solved: false, reason: "No variables found." }];
+  if (vars.length === 0)
+    return [{ variable: "?", latex, solved: false, reason: "No variables found." }];
 
-	const eq = equation as Eq;
-	const results: RearrangementResult[] = [];
+  const eq = equation as Eq;
+  const results: RearrangementResult[] = [];
 
-	for (const v of vars) {
-		const combined = sub(eq.left, eq.right);
-		let solution: Node | null = null;
+  for (const v of vars) {
+    let solution: Node | null = null;
 
-		if (containsVar(eq.left, v))
-			solution = isolate(eq.left, eq.right, v);
+    // ── Step 1: direct tree-walking isolation ────────────────────────────────
+    // Best for single-occurrence and transcendental equations.
+    {
+      let candidate: Node | null = null;
 
-		if (solution === null && containsVar(eq.right, v))
-			solution = isolate(eq.right, eq.left, v);
+      if (containsVar(eq.left, v))
+        candidate = isolate(eq.left, eq.right, v);
 
-		if (solution === null)
-			solution = isolate(simplify(combined), num(0), v);
+      if (candidate === null && containsVar(eq.right, v))
+        candidate = isolate(eq.right, eq.left, v);
 
-		if (solution !== null) {
-			results.push({ variable: v, latex: `${v} = ${nodeToLatex(simplify(solution))}`, solved: true });
-		} else {
-			results.push({
-				variable: v,
-				latex: nodeToLatex(equation),
-				solved: false,
-				reason: `Could not isolate '${v}' — it may appear in multiple terms or nonlinear position.`,
-			});
-		}
-	}
+      if (candidate !== null) {
+        const s = simplify(candidate);
+        // Accept only if result doesn't still contain the target variable
+        if (!containsVar(s, v)) solution = s;
+      }
+    }
 
-	return results;
+    // ── Step 2: polynomial solver (fallback) ─────────────────────────────────
+    // Used when tree-walker fails: multi-term linear (ax+bx=c), quadratics,
+    // depressed cubics. Try both (LHS-RHS) and (RHS-LHS) orientations and
+    // prefer the one whose leading coefficient is "positive-looking" for
+    // cleaner output.
+    if (solution === null) {
+      const tryPoly = (expr: Node): Node | null => {
+        const combined = simplify(expr);
+        const poly = extractPoly(combined, v);
+        if (!poly) return null;
+        const solutions = solvePoly(poly, v);
+        if (!solutions || solutions.length === 0) return null;
+        const candidate = simplify(solutions[0]);
+        return containsVar(candidate, v) ? null : candidate;
+      };
+
+      // Try LHS-RHS first
+      let candidate = tryPoly(sub(eq.left, eq.right));
+
+      // If that fails or we can also try RHS-LHS for a potentially cleaner form
+      if (candidate === null) {
+        candidate = tryPoly(sub(eq.right, eq.left));
+      } else {
+        // Also try RHS-LHS and pick whichever has a simpler-looking polynomial
+        // (prefer the orientation where the leading coefficient is not wrapped in neg)
+        const altCandidate = tryPoly(sub(eq.right, eq.left));
+        if (altCandidate !== null) {
+          // Prefer whichever form has fewer neg nodes at top level
+          const countNeg = (n: Node): number => {
+            const s = nodeToLatex(n);
+            return (s.match(/-/g) || []).length;
+          };
+          if (countNeg(altCandidate) < countNeg(candidate)) {
+            candidate = altCandidate;
+          }
+        }
+      }
+
+      if (candidate !== null) solution = candidate;
+    }
+
+    if (solution !== null) {
+      results.push({ variable: v, latex: `${v} = ${nodeToLatex(simplify(solution))}`, solved: true });
+    } else {
+      results.push({
+        variable: v,
+        latex: nodeToLatex(equation),
+        solved: false,
+        reason: `Could not isolate '${v}' — degree > 3, transcendental, or variable appears in unsupported position.`,
+      });
+    }
+  }
+
+  return results;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -910,41 +1180,26 @@ export function rearrangeLatex(latex: string): RearrangementResult[] {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DEMO_EQUATIONS = [
-	// Original demos
-	"v = u + at",
-	"E = mc^2",
-	"\\frac{1}{2}mv^2 = mgh",
-	"PV = nRT",
-	"F = \\frac{Gm_1 m_2}{r^2}",
-	"v^2 = u^2 + 2as",
-	"T = 2\\pi\\sqrt{\\frac{L}{g}}",
-	"\\ln(N) = \\ln(N_0) - \\lambda t",
-	// New: modifier prefix variables
-	"v = v_0 + a \\delta t",
-	"\\Delta x = v_0 t + \\frac{1}{2} a t^2",
-	"\\partial E = \\mathcal{H} \\delta q",
-	// Font/accent variables
-	"\\mathcal{L} = \\mathbf{F} \\cdot \\vec{r}",
-	"\\hat{p} = m \\hat{v}",
+  // ── Linear / rational ───────────────────────────────────────────────────
+  "v = u + at",
+  "E = mc^2",
+  "\\frac{1}{2}mv^2 = mgh",
+  "PV = nRT",
+  "F = \\frac{Gm_1 m_2}{r^2}",
+  // ── Quadratic / ± ───────────────────────────────────────────────────────
+  "v^2 = u^2 + 2as",                   // v = ±√(...), u = ±√(...)
+  "x^2 = 4",                           // x = ±2
+  "ax^2 + bx + c = 0",                 // full quadratic formula
+  "x^2 - 5x + 6 = 0",                  // numeric quadratic
+  "\\frac{1}{2}mv^2 = E",              // v = ±√(2E/m)
+  "r^2 = x^2 + y^2",                   // multi-var quadratic
+  // ── Multi-term linear (needs polynomial solver) ──────────────────────────
+  "ax + bx = c",                       // x = c/(a+b)
+  "I_{total} = I_1 + I_2",
+  // ── Transcendental ──────────────────────────────────────────────────────
+  "T = 2\\pi\\sqrt{\\frac{L}{g}}",
+  "\\ln(N) = \\ln(N_0) - \\lambda t",
+  // ── Special variable forms ───────────────────────────────────────────────
+  "\\Delta x = v_0 t + \\frac{1}{2} a t^2",
+  "\\mathcal{L} = \\mathbf{F} \\cdot \\vec{r}",
 ];
-
-function printResults(latex: string): void {
-	console.log(`\n${"─".repeat(60)}`);
-	console.log(`  Input:  ${latex}`);
-	console.log(`${"─".repeat(60)}`);
-	for (const r of rearrangeLatex(latex)) {
-		if (r.solved) {
-			console.log(`  ✓  ${r.latex}`);
-		} else {
-			console.log(`  ✗  [${r.variable}] ${r.reason}`);
-		}
-	}
-}
-
-// (function runDemo() {
-// 	console.log("\n╔══════════════════════════════════════════════════════════╗");
-// 	console.log("║          LaTeX Formula Rearrangement Engine              ║");
-// 	console.log("╚══════════════════════════════════════════════════════════╝");
-// 	for (const eq of DEMO_EQUATIONS) printResults(eq);
-// 	console.log(`\n${"─".repeat(60)}\n`);
-// }());

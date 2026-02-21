@@ -4,6 +4,7 @@
 #include "formula_finder.hpp"
 #include <map>
 #include <expected>
+#include <memory>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -21,21 +22,30 @@ namespace dv {
         std::string identifier;
         AssignExpression(std::string _identifier, std::string _value_expr, std::string _unit_expr): Expression{_value_expr, _unit_expr}, identifier{_identifier} {}
     };
+
+    struct CustomFunction {
+        std::string name;
+        std::vector<std::string> param_names;
+        std::unique_ptr<AST> body;
+    };
+
     class Evaluator {
         public:
         using MaybeEvaluated = std::expected<EValue, std::string>;
-        
-        Evaluator();
-        // Evaluator(const std::span<const AssignExpression> const_expressions);
 
-        MaybeEvaluated evaluate_expression(const Expression &expression); 
-        std::vector<MaybeEvaluated> evaluate_expression_list(const std::span<const Expression> expression_list); 
+        Evaluator();
+        ~Evaluator();
+
+        MaybeEvaluated evaluate_expression(const Expression &expression);
+        std::vector<MaybeEvaluated> evaluate_expression_list(const std::span<const Expression> expression_list);
         void insert_constant(const std::string name, const Expression &expression);
         std::vector<Physics::Formula> get_available_formulas(const dv::UnitVector &target) const noexcept;
 
         std::unordered_map<std::string, EValue> fixed_constants;
         std::map<std::string, EValue> evaluated_variables;
         std::vector<Physics::Formula> last_formula_results;
+        std::unordered_map<std::string, CustomFunction> custom_functions;
+        std::map<std::string, std::string> variable_source_expressions;
     private:
         FormulaSearcher searcher;
         MaybeASTDependencies parse_expression(const Expression expression);

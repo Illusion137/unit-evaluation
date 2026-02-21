@@ -81,11 +81,45 @@ struct dv_result {
     char error[256];
     char unit_latex[256];
     char value_scientific[256];
+    int value_count;          // 1 = scalar, >1 = array
+    double* extra_values;     // array values (NULL for scalar)
+    double imag;              // imaginary component
+    int sig_figs;             // -1 if not tracked
 };
+
+static void fill_result(dv_result& result, const EValue& ev) {
+    result.value = ev.value;
+    result.imag = ev.imag;
+    result.sig_figs = ev.sig_figs;
+    memcpy(result.unit, ev.unit.vec.data(), 7 * sizeof(int8_t));
+    result.success = true;
+
+    // Array support
+    if(!ev.extra_values.empty()) {
+        result.value_count = static_cast<int>(ev.extra_values.size());
+        result.extra_values = (double*)malloc(sizeof(double) * result.value_count);
+        for(int i = 0; i < result.value_count; i++) {
+            result.extra_values[i] = static_cast<double>(ev.extra_values[i]);
+        }
+    } else {
+        result.value_count = 1;
+        result.extra_values = nullptr;
+    }
+
+    auto latex = ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC} ? "" : unit_to_latex(ev.unit);
+    strncpy(result.unit_latex, latex.c_str(), sizeof(result.unit_latex) - 1);
+    result.unit_latex[sizeof(result.unit_latex) - 1] = '\0';
+
+    auto sci = value_to_scientific(ev.value);
+    strncpy(result.value_scientific, sci.c_str(), sizeof(result.value_scientific) - 1);
+    result.value_scientific[sizeof(result.value_scientific) - 1] = '\0';
+}
 
 WASM_EXPORT
 dv_result dv_eval(const char* value_expr, const char* unit_expr) {
     dv_result result = {};
+    result.extra_values = nullptr;
+    result.sig_figs = -1;
 
     if (!g_eval) {
         strncpy(result.error, "Evaluator not initialized", sizeof(result.error) - 1);
@@ -102,24 +136,21 @@ dv_result dv_eval(const char* value_expr, const char* unit_expr) {
     auto results = g_eval->evaluate_expression_list(exprs);
 
     if (results[0]) {
-        const auto& ev = results[0].value();
-        result.value = ev.value;
-        memcpy(result.unit, ev.unit.vec.data(), 7 * sizeof(int8_t));
-        result.success = true;
-
-        auto latex = ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC} ? "" : unit_to_latex(ev.unit);
-        strncpy(result.unit_latex, latex.c_str(), sizeof(result.unit_latex) - 1);
-        result.unit_latex[sizeof(result.unit_latex) - 1] = '\0';
-
-        auto sci = value_to_scientific(ev.value);
-        strncpy(result.value_scientific, sci.c_str(), sizeof(result.value_scientific) - 1);
-        result.value_scientific[sizeof(result.value_scientific) - 1] = '\0';
+        fill_result(result, results[0].value());
     } else {
         strncpy(result.error, results[0].error().c_str(), sizeof(result.error) - 1);
         result.error[sizeof(result.error) - 1] = '\0';
     }
 
     return result;
+}
+
+WASM_EXPORT
+void dv_free_result(dv_result* result) {
+    if (result && result->extra_values) {
+        free(result->extra_values);
+        result->extra_values = nullptr;
+    }
 }
 
 // ============================================================================
@@ -133,6 +164,10 @@ struct dv_batch_result {
     char** errors;
     char** unit_latexes;
     char** value_scientifics;
+    int* value_counts;
+    double** extra_values_array;
+    double* imag_values;
+    int* sig_figs_array;
     int count;
 };
 
@@ -151,6 +186,10 @@ dv_batch_result* dv_eval_batch(const char** value_exprs, const char** unit_exprs
     batch->errors = (char**)malloc(sizeof(char*) * count);
     batch->unit_latexes = (char**)malloc(sizeof(char*) * count);
     batch->value_scientifics = (char**)malloc(sizeof(char*) * count);
+    batch->value_counts = (int*)malloc(sizeof(int) * count);
+    batch->extra_values_array = (double**)malloc(sizeof(double*) * count);
+    batch->imag_values = (double*)malloc(sizeof(double) * count);
+    batch->sig_figs_array = (int*)malloc(sizeof(int) * count);
 
     std::vector<Expression> exprs;
     exprs.reserve(count);
@@ -165,9 +204,23 @@ dv_batch_result* dv_eval_batch(const char** value_exprs, const char** unit_exprs
         if (results[i]) {
             const auto& ev = results[i].value();
             batch->values[i] = ev.value;
+            batch->imag_values[i] = ev.imag;
+            batch->sig_figs_array[i] = ev.sig_figs;
             memcpy(batch->units[i], ev.unit.vec.data(), 7 * sizeof(int8_t));
             batch->successes[i] = true;
             batch->errors[i] = nullptr;
+
+            // Array support
+            if(!ev.extra_values.empty()) {
+                batch->value_counts[i] = static_cast<int>(ev.extra_values.size());
+                batch->extra_values_array[i] = (double*)malloc(sizeof(double) * batch->value_counts[i]);
+                for(int j = 0; j < batch->value_counts[i]; j++) {
+                    batch->extra_values_array[i][j] = static_cast<double>(ev.extra_values[j]);
+                }
+            } else {
+                batch->value_counts[i] = 1;
+                batch->extra_values_array[i] = nullptr;
+            }
 
             auto latex = ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC} ? "" : unit_to_latex(ev.unit);
             batch->unit_latexes[i] = (char*)malloc(latex.length() + 1);
@@ -178,10 +231,14 @@ dv_batch_result* dv_eval_batch(const char** value_exprs, const char** unit_exprs
             strcpy(batch->value_scientifics[i], sci.c_str());
         } else {
             batch->values[i] = std::nan("");
+            batch->imag_values[i] = 0.0;
+            batch->sig_figs_array[i] = -1;
             memset(batch->units[i], 0, 7 * sizeof(int8_t));
             batch->successes[i] = false;
             batch->unit_latexes[i] = nullptr;
             batch->value_scientifics[i] = nullptr;
+            batch->value_counts[i] = 0;
+            batch->extra_values_array[i] = nullptr;
 
             const auto& err = results[i].error();
             batch->errors[i] = (char*)malloc(err.length() + 1);
@@ -202,12 +259,17 @@ void dv_free_batch_result(dv_batch_result* batch) {
         free(batch->errors[i]);
         free(batch->unit_latexes[i]);
         free(batch->value_scientifics[i]);
+        free(batch->extra_values_array[i]);
     }
     free(batch->units);
     free(batch->successes);
     free(batch->errors);
     free(batch->unit_latexes);
     free(batch->value_scientifics);
+    free(batch->value_counts);
+    free(batch->extra_values_array);
+    free(batch->imag_values);
+    free(batch->sig_figs_array);
 
     free(batch);
 }
@@ -411,7 +473,7 @@ void dv_free(void* ptr) {
 
 WASM_EXPORT
 const char* dv_version() {
-    return "1.0.0";
+    return "2.0.0";
 }
 
 } // extern "C"

@@ -23,6 +23,8 @@ std::string dv::Expression::get_single_expression() const {
     return std::format("\\left({}\\right)\\cdot{}", value_expr, unit);
 }
 
+dv::Evaluator::~Evaluator() = default;
+
 dv::Evaluator::Evaluator(){
     std::vector<dv::AssignExpression> const_expressions = {
         {"e_c", "1.602*10^{-19}", "\\C"},
@@ -62,6 +64,8 @@ dv::Evaluator::MaybeEvaluated dv::Evaluator::evaluate_expression(const Expressio
 std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_list(const std::span<const dv::Expression> expression_list){
     evaluated_variables.clear();
     last_formula_results.clear();
+    custom_functions.clear();
+    variable_source_expressions.clear();
     std::vector<dv::MaybeASTDependencies> parsed_expressions;
     parsed_expressions.reserve(expression_list.size());
     for(const auto &expression : expression_list){
@@ -78,6 +82,10 @@ std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_li
             continue;
         }
         evaluated[evaluation_index] = parsed_expressions[evaluation_index].value().ast->evaluate(*this);
+        // Store last successful result as 'ans'
+        if(evaluated[evaluation_index]) {
+            evaluated_variables.insert_or_assign("ans", evaluated[evaluation_index].value());
+        }
     }
 
     return evaluated;

@@ -3,6 +3,8 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <optional>
+#include <vector>
 
 #define DIM_METER    { 1, 0, 0, 0, 0, 0, 0 }
 #define DIM_KILOGRAM { 0, 0, 1, 0, 0, 0, 0 }
@@ -99,10 +101,22 @@ namespace dv {
     };
     struct EValue {
         long double value;
+        long double imag = 0.0;
         UnitVector unit;
+        std::vector<long double> extra_values;
+
         EValue() : value{0.0}, unit{DIMENSIONLESS_VEC} {}
         EValue(const long double val): value{val}, unit{DIMENSIONLESS_VEC} {}
         EValue(const long double val, const UnitVector _unit): value{val}, unit{_unit} {}
+
+        bool is_scalar() const noexcept { return extra_values.empty(); }
+        bool is_complex() const noexcept { return imag != 0.0; }
+        std::size_t size() const noexcept { return extra_values.empty() ? 1 : extra_values.size(); }
+        long double at(std::size_t i) const noexcept {
+            if(extra_values.empty()) return value;
+            return extra_values[i];
+        }
+
         EValue operator+() const noexcept;
         EValue operator+(const EValue &rhs) const noexcept;
         EValue operator-() const noexcept;
@@ -112,5 +126,10 @@ namespace dv {
         EValue operator^(const EValue &rhs) const noexcept;
         EValue fact() const noexcept;
         EValue abs() const noexcept;
+
+        int sig_figs = -1;
+        int decimal_places = -1;
+
+        std::optional<std::vector<std::vector<long double>>> matrix;
     };
 }

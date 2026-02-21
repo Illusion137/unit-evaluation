@@ -9,6 +9,11 @@ struct LatexTest {
     const double expected_result;
 };
 
+struct LatexMultiTest {
+    std::vector<std::string> expressions;
+    double expected_result; // expected result of last expression
+};
+
 static inline void print_tokens_red(const std::string view){
     dv::Lexer lexer{view};
     const auto &tokens = lexer.extract_all_tokens();
@@ -49,7 +54,7 @@ static inline bool run_non_related_tests(const std::span<const LatexTest> tests)
         }
         if(std::fabs(value.value().value - test.expected_result) > epsilon){
             success = false;
-            std::println("\033[31m[FAIL] {} = {} : Expected → {} ✗\033[0m", single_expression_list[0].get_single_expression(), value.value().value, test.expected_result);
+            std::println("\033[31m[FAIL] {} = {} : Expected {} ✗\033[0m", single_expression_list[0].get_single_expression(), value.value().value, test.expected_result);
             print_ast_red(single_expression_list[0].get_single_expression());
             continue;
         }
@@ -66,6 +71,50 @@ static inline bool run_non_related_tests(const std::span<const LatexTest> tests)
     }
     else {
         std::println("\033[31m[FAILED] {} \033[0m: \033[0;32m[PASSED] {}\033[0m", tests.size() - passed, passed);
+    }
+    return success;
+}
+
+static inline bool run_multi_tests(const std::span<const LatexMultiTest> tests){
+    constexpr double epsilon = 0.001;
+    std::int32_t passed = 0;
+    bool success = true;
+    for(const auto &test: tests){
+        std::vector<dv::Expression> exprs;
+        for(const auto &e: test.expressions) {
+            exprs.push_back(dv::Expression{.value_expr = e});
+        }
+        dv::Evaluator evaluator{};
+        const auto &eval = evaluator.evaluate_expression_list(exprs);
+        const auto &value = eval.back();
+        std::string desc;
+        for(std::size_t i = 0; i < test.expressions.size(); i++) {
+            if(i > 0) desc += " ; ";
+            desc += test.expressions[i];
+        }
+        if(!value){
+            success = false;
+            std::println("\033[31m[FAIL] {} = ERROR({}) ✗\033[0m", desc, value.error());
+            continue;
+        }
+        if(std::fabs(value.value().value - test.expected_result) > epsilon){
+            success = false;
+            std::println("\033[31m[FAIL] {} = {} : Expected {} ✗\033[0m", desc, value.value().value, test.expected_result);
+            continue;
+        }
+        else {
+            passed++;
+            std::println("\033[0;32m[PASS] {} = {} ✓\033[0m", desc, test.expected_result);
+        }
+    }
+    if(tests.size() - passed == 0) {
+        std::println("\033[0;32m[MULTI PASSED] {}\033[0m", passed);
+    }
+    else if(passed == 0){
+        std::println("\033[31m[MULTI FAILED] {} \033[0m", tests.size() - passed);
+    }
+    else {
+        std::println("\033[31m[MULTI FAILED] {} \033[0m: \033[0;32m[PASSED] {}\033[0m", tests.size() - passed, passed);
     }
     return success;
 }

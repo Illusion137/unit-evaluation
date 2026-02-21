@@ -2,6 +2,10 @@
 export interface EvalResult {
     success: boolean;
     value?: number;
+    imag?: number;
+    sig_figs?: number;
+    value_count?: number;
+    extra_values?: number[];
     unit?: number[];
     unit_latex?: string;
     value_scientific?: string;
@@ -58,8 +62,68 @@ export interface WasmModule {
     HEAP32: Int32Array;
     HEAPU32: Uint32Array;
     HEAPU8: Uint8Array;
-    HEAP8: Uint8Array;
+    HEAP8: Int8Array;
 }
+
+// ============================================================================
+// dv_result WASM32 struct layout (offsets in bytes)
+// ============================================================================
+//   0: double value          (8 bytes)
+//   8: int8_t unit[7]        (7 bytes)
+//  15: bool success          (1 byte)
+//  16: char error[256]       (256 bytes)
+// 272: char unit_latex[256]  (256 bytes)
+// 528: char value_scientific[256] (256 bytes)
+// 784: int value_count       (4 bytes)
+// 788: double* extra_values  (4 bytes, WASM32 ptr)
+// 792: double imag           (8 bytes)
+// 800: int sig_figs          (4 bytes)
+// sizeof = 808
+// ============================================================================
+
+const DV_RESULT_OFFSET = {
+    value:            0,
+    unit:             8,
+    success:          15,
+    error:            16,
+    unit_latex:       272,
+    value_scientific: 528,
+    value_count:      784,
+    extra_values:     788,
+    imag:             792,
+    sig_figs:         800,
+} as const;
+
+// ============================================================================
+// dv_batch_result WASM32 struct layout (offsets in bytes, all ptrs = 4 bytes)
+// ============================================================================
+//  0: double* values
+//  4: int8_t** units
+//  8: bool* successes
+// 12: char** errors
+// 16: char** unit_latexes
+// 20: char** value_scientifics
+// 24: int* value_counts
+// 28: double** extra_values_array
+// 32: double* imag_values
+// 36: int* sig_figs_array
+// 40: int count
+// sizeof = 44
+// ============================================================================
+
+const DV_BATCH_OFFSET = {
+    values:              0,
+    units:               4,
+    successes:           8,
+    errors:              12,
+    unit_latexes:        16,
+    value_scientifics:   20,
+    value_counts:        24,
+    extra_values_array:  28,
+    imag_values:         32,
+    sig_figs_array:      36,
+    count:               40,
+} as const;
 
 // dimensional_evaluator.ts
 export class DimensionalEvaluator {
@@ -133,30 +197,46 @@ export class DimensionalEvaluator {
         const unit_expr_ptr = this._alloc_string(unit_expr);
         const result_ptr = this.module._dv_eval(value_expr_ptr, unit_expr_ptr);
 
-        // struct dv_result layout (WASM):
-        //   0: long double value (8 bytes)
-        //   8: int8_t unit[7] (7 bytes)
-        //  15: bool success (1 byte)
-        //  16: char error[256]
-        // 272: char unit_latex[256]
-        // 528: char value_scientific[256]
-
-        const value = this.module.HEAPF64[result_ptr / 8];
+        const value   = this.module.HEAPF64[result_ptr / 8 + DV_RESULT_OFFSET.value / 8];
+        const success = this.module.HEAPU8[result_ptr + DV_RESULT_OFFSET.success] !== 0;
 
         const unit: number[] = [];
         for (let i = 0; i < 7; i++) {
-            unit.push(this.module.HEAP8[result_ptr + 8 + i]);
+            unit.push(this.module.HEAP8[result_ptr + DV_RESULT_OFFSET.unit + i]);
         }
 
-        const success = this.module.HEAPU8[result_ptr + 15] !== 0;
-
         let result: EvalResult;
+
         if (success) {
-            const unit_latex = this._read_fixed_string(result_ptr + 272, 256);
-            const value_scientific = this._read_fixed_string(result_ptr + 528, 256);
-            result = { success: true, value, unit, unit_latex, value_scientific };
+            const unit_latex       = this._read_fixed_string(result_ptr + DV_RESULT_OFFSET.unit_latex, 256);
+            const value_scientific = this._read_fixed_string(result_ptr + DV_RESULT_OFFSET.value_scientific, 256);
+            const value_count      = this.module.HEAP32[(result_ptr + DV_RESULT_OFFSET.value_count) / 4];
+            const imag             = this.module.HEAPF64[(result_ptr + DV_RESULT_OFFSET.imag) / 8];
+            const sig_figs         = this.module.HEAP32[(result_ptr + DV_RESULT_OFFSET.sig_figs) / 4];
+
+            // Read extra_values array if value_count > 1
+            let extra_values: number[] | undefined;
+            if (value_count > 1) {
+                const extra_ptr = this.module.HEAPU32[(result_ptr + DV_RESULT_OFFSET.extra_values) / 4];
+                extra_values = [];
+                for (let i = 0; i < value_count; i++) {
+                    extra_values.push(this.module.HEAPF64[extra_ptr / 8 + i]);
+                }
+            }
+
+            result = {
+                success: true,
+                value,
+                imag,
+                sig_figs: sig_figs === -1 ? undefined : sig_figs,
+                value_count,
+                extra_values,
+                unit,
+                unit_latex,
+                value_scientific,
+            };
         } else {
-            const error = this._read_fixed_string(result_ptr + 16, 256);
+            const error = this._read_fixed_string(result_ptr + DV_RESULT_OFFSET.error, 256);
             result = { success: false, error };
         }
 
@@ -176,7 +256,7 @@ export class DimensionalEvaluator {
         const count = expressions.length;
         const ptr_size = 4;
         const value_array_ptr = this.module._malloc(count * ptr_size);
-        const unit_array_ptr = this.module._malloc(count * ptr_size);
+        const unit_array_ptr  = this.module._malloc(count * ptr_size);
         const string_ptrs: number[] = [];
 
         try {
@@ -185,7 +265,7 @@ export class DimensionalEvaluator {
                 const u_ptr = this._alloc_string(expressions[i].unit_expr);
                 string_ptrs.push(v_ptr, u_ptr);
                 this.module.HEAPU32[value_array_ptr / 4 + i] = v_ptr;
-                this.module.HEAPU32[unit_array_ptr / 4 + i] = u_ptr;
+                this.module.HEAPU32[unit_array_ptr  / 4 + i] = u_ptr;
             }
 
             const batch_ptr = this.module._dv_eval_batch(value_array_ptr, unit_array_ptr, count);
@@ -194,25 +274,23 @@ export class DimensionalEvaluator {
                 throw new Error('Batch evaluation failed');
             }
 
-            // struct dv_batch_result layout (WASM, 32-bit pointers):
-            //  0: long double* values
-            //  4: int8_t** units
-            //  8: bool* successes
-            // 12: char** errors
-            // 16: char** unit_latexes
-            // 20: char** value_scientifics
-            // 24: int count
-            const values_ptr = this.module.HEAPU32[batch_ptr / 4];
-            const units_ptr = this.module.HEAPU32[batch_ptr / 4 + 1];
-            const successes_ptr = this.module.HEAPU32[batch_ptr / 4 + 2];
-            const errors_ptr = this.module.HEAPU32[batch_ptr / 4 + 3];
-            const unit_latexes_ptr = this.module.HEAPU32[batch_ptr / 4 + 4];
-            const value_scientifics_ptr = this.module.HEAPU32[batch_ptr / 4 + 5];
-            const result_count = this.module.HEAP32[batch_ptr / 4 + 6];
+            // Read field pointers from dv_batch_result
+            const values_ptr             = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.values)             / 4];
+            const units_ptr              = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.units)              / 4];
+            const successes_ptr          = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.successes)          / 4];
+            const errors_ptr             = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.errors)             / 4];
+            const unit_latexes_ptr       = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.unit_latexes)       / 4];
+            const value_scientifics_ptr  = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.value_scientifics)  / 4];
+            const value_counts_ptr       = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.value_counts)       / 4];
+            const extra_values_array_ptr = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.extra_values_array) / 4];
+            const imag_values_ptr        = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.imag_values)        / 4];
+            const sig_figs_array_ptr     = this.module.HEAPU32[(batch_ptr + DV_BATCH_OFFSET.sig_figs_array)     / 4];
+            const result_count           = this.module.HEAP32 [(batch_ptr + DV_BATCH_OFFSET.count)              / 4];
 
             const results: EvalResult[] = [];
+
             for (let i = 0; i < result_count; i++) {
-                const value = this.module.HEAPF64[values_ptr / 8 + i];
+                const value   = this.module.HEAPF64[values_ptr / 8 + i];
                 const success = this.module.HEAPU8[successes_ptr + i] !== 0;
 
                 const unit_arr_ptr = this.module.HEAPU32[units_ptr / 4 + i];
@@ -222,11 +300,35 @@ export class DimensionalEvaluator {
                 }
 
                 if (success) {
-                    const latex_str_ptr = this.module.HEAPU32[unit_latexes_ptr / 4 + i];
-                    const sci_str_ptr = this.module.HEAPU32[value_scientifics_ptr / 4 + i];
-                    const unit_latex = this._read_string(latex_str_ptr);
+                    const latex_str_ptr = this.module.HEAPU32[unit_latexes_ptr      / 4 + i];
+                    const sci_str_ptr   = this.module.HEAPU32[value_scientifics_ptr / 4 + i];
+                    const unit_latex       = this._read_string(latex_str_ptr);
                     const value_scientific = this._read_string(sci_str_ptr);
-                    results.push({ success: true, value, unit, unit_latex, value_scientific });
+
+                    const imag        = this.module.HEAPF64[imag_values_ptr / 8 + i];
+                    const sig_figs_raw = this.module.HEAP32[sig_figs_array_ptr / 4 + i];
+                    const value_count = this.module.HEAP32[value_counts_ptr / 4 + i];
+
+                    let extra_values: number[] | undefined;
+                    if (value_count > 1) {
+                        const extra_ptr = this.module.HEAPU32[extra_values_array_ptr / 4 + i];
+                        extra_values = [];
+                        for (let j = 0; j < value_count; j++) {
+                            extra_values.push(this.module.HEAPF64[extra_ptr / 8 + j]);
+                        }
+                    }
+
+                    results.push({
+                        success: true,
+                        value,
+                        imag,
+                        sig_figs: sig_figs_raw === -1 ? undefined : sig_figs_raw,
+                        value_count,
+                        extra_values,
+                        unit,
+                        unit_latex,
+                        value_scientific,
+                    });
                 } else {
                     const error_str_ptr = this.module.HEAPU32[errors_ptr / 4 + i];
                     const error = this._read_string(error_str_ptr);
@@ -295,7 +397,7 @@ export class DimensionalEvaluator {
     unit_latex_to_unit(unit_latex: string): number[] {
         this._check_initialized();
         const latex_ptr = this._alloc_string(unit_latex);
-        const out_ptr = this.module._malloc(7);
+        const out_ptr   = this.module._malloc(7);
 
         try {
             this.module._dv_unit_latex_to_unit(latex_ptr, out_ptr);
@@ -347,17 +449,12 @@ export class DimensionalEvaluator {
 
     get_variable(name: string): number | null {
         this._check_initialized();
-        const name_ptr = this._alloc_string(name);
+        const name_ptr  = this._alloc_string(name);
         const value_ptr = this.module._malloc(8);
 
         try {
             const success = this.module._dv_get_variable(name_ptr, value_ptr);
-
-            if (success) {
-                return this.module.HEAPF64[value_ptr / 8];
-            }
-
-            return null;
+            return success ? this.module.HEAPF64[value_ptr / 8] : null;
         } finally {
             this.module._dv_free(name_ptr);
             this.module._dv_free(value_ptr);
@@ -393,25 +490,25 @@ export class DimensionalEvaluator {
     // ========================================================================
 
     private _read_formula_list(list_ptr: number): FormulaResult[] {
-        // struct dv_formula_list layout:
+        // dv_formula_list WASM32 layout:
         //  0: char** names
         //  4: char** latexes
         //  8: char** categories
         // 12: char** variables_json
         // 16: int count
-        const names_ptr = this.module.HEAPU32[list_ptr / 4];
-        const latexes_ptr = this.module.HEAPU32[list_ptr / 4 + 1];
-        const categories_ptr = this.module.HEAPU32[list_ptr / 4 + 2];
+        const names_ptr          = this.module.HEAPU32[list_ptr / 4];
+        const latexes_ptr        = this.module.HEAPU32[list_ptr / 4 + 1];
+        const categories_ptr     = this.module.HEAPU32[list_ptr / 4 + 2];
         const variables_json_ptr = this.module.HEAPU32[list_ptr / 4 + 3];
-        const count = this.module.HEAP32[list_ptr / 4 + 4];
+        const count              = this.module.HEAP32 [list_ptr / 4 + 4];
 
         const formulas: FormulaResult[] = [];
         for (let i = 0; i < count; i++) {
-            const name = this._read_string(this.module.HEAPU32[names_ptr / 4 + i]);
-            const latex = this._read_string(this.module.HEAPU32[latexes_ptr / 4 + i]);
-            const category = this._read_string(this.module.HEAPU32[categories_ptr / 4 + i]);
-            const vars_json_str = this._read_string(this.module.HEAPU32[variables_json_ptr / 4 + i]);
-            const variables: FormulaVariable[] = JSON.parse(vars_json_str);
+            const name         = this._read_string(this.module.HEAPU32[names_ptr          / 4 + i]);
+            const latex        = this._read_string(this.module.HEAPU32[latexes_ptr        / 4 + i]);
+            const category     = this._read_string(this.module.HEAPU32[categories_ptr     / 4 + i]);
+            const vars_json    = this._read_string(this.module.HEAPU32[variables_json_ptr / 4 + i]);
+            const variables: FormulaVariable[] = JSON.parse(vars_json);
             formulas.push({ name, latex, category, variables });
         }
 
@@ -429,28 +526,20 @@ export class DimensionalEvaluator {
 
     private _alloc_string(str: string): number {
         const bytes = this.text_encoder.encode(str + '\0');
-        const ptr = this.module._malloc(bytes.length);
+        const ptr   = this.module._malloc(bytes.length);
         this.module.HEAPU8.set(bytes, ptr);
         return ptr;
     }
 
     private _read_string(ptr: number): string {
-        const bytes: number[] = [];
-        let offset = 0;
-        while (this.module.HEAPU8[ptr + offset] !== 0) {
-            bytes.push(this.module.HEAPU8[ptr + offset]);
-            offset++;
-        }
-        return this.text_decoder.decode(new Uint8Array(bytes));
+        let len = 0;
+        while (this.module.HEAPU8[ptr + len] !== 0) len++;
+        return this.text_decoder.decode(this.module.HEAPU8.subarray(ptr, ptr + len));
     }
 
     private _read_fixed_string(ptr: number, max_len: number): string {
-        // const end = ptr + max_len;
         let len = 0;
-        while (len < max_len && this.module.HEAPU8[ptr + len] !== 0) {
-            len++;
-        }
-        const bytes = this.module.HEAPU8.subarray(ptr, ptr + len);
-        return this.text_decoder.decode(bytes);
+        while (len < max_len && this.module.HEAPU8[ptr + len] !== 0) len++;
+        return this.text_decoder.decode(this.module.HEAPU8.subarray(ptr, ptr + len));
     }
 }

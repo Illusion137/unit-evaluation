@@ -337,12 +337,13 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             auto arg = call.args[0]->evaluate(evalulator);
             if(!arg) return arg;
             // Handle sqrt of negative -> complex
-            if(arg->value < 0 && !call.special_value) {
-                EValue result;
-                result.value = 0.0;
-                result.imag = std::sqrt(-arg->value);
-                return result;
-            }
+            // TODO handle complex numbers
+            // if(arg->value < 0 && !call.special_value) {
+            //     EValue result;
+            //     result.value = 0.0;
+            //     result.imag = std::sqrt(-arg->value);
+            //     return result;
+            // }
             if(!call.special_value) return dv::builtins::nthsqrt(*arg, 2.0);
             auto n = call.special_value->evaluate(evalulator);
             if(!n) return n;

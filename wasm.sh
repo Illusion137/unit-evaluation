@@ -1,3 +1,4 @@
+export CMAKE_BUILD_PARALLEL_LEVEL=8
 emcc eval.cpp \
     -O3 \
     -s WASM=1 \

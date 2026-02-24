@@ -1,479 +1,325 @@
 #include "dimeval.hpp"
 #include "evaluator.hpp"
 #include "value_utils.hpp"
-#include <cmath>
-#include <cstdint>
 #include <cstring>
 #include <string>
 #include <vector>
+#include <emscripten/bind.h>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#define WASM_EXPORT EMSCRIPTEN_KEEPALIVE
-#else
-#define WASM_EXPORT
-#endif
-
+using namespace emscripten;
 using namespace dv;
 
 static Evaluator* g_eval = nullptr;
 
-extern "C" {
-
 // ============================================================================
-// Lifecycle Management
+// JS-facing structs (clean, no raw pointers)
 // ============================================================================
 
-WASM_EXPORT
+struct JsResult {
+    double value;
+    double imag;
+    int sig_figs;
+    std::vector<int> unit;          // 7 int8_t values as ints (Embind handles int8_t poorly)
+    bool success;
+    std::string error;
+    std::string unit_latex;
+    std::string value_scientific;
+    std::vector<double> extra_values;
+};
+
+struct JsFormulaVariable {
+    std::string name;
+    std::string units;
+    std::string description;
+    bool is_constant;
+};
+
+struct JsFormula {
+    std::string name;
+    std::string latex;
+    std::string category;
+    std::vector<JsFormulaVariable> variables;
+};
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+static JsResult make_error_result(const std::string& msg) {
+    JsResult r{};
+    r.success = false;
+    r.error = msg;
+    r.sig_figs = -1;
+    r.unit = std::vector<int>(7, 0);
+    return r;
+}
+
+static JsResult evalue_to_js_result(const EValue& ev) {
+    JsResult r;
+    r.value = ev.value;
+    r.imag = ev.imag;
+    r.sig_figs = ev.sig_figs;
+    r.success = true;
+
+    r.unit.resize(7);
+    for (int i = 0; i < 7; i++)
+        r.unit[i] = ev.unit.vec[i];
+
+    r.extra_values = std::vector<double>(ev.extra_values.begin(), ev.extra_values.end());
+
+    r.unit_latex = (ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC})
+        ? "" : unit_to_latex(ev.unit);
+    r.value_scientific = value_to_scientific(ev.value);
+    return r;
+}
+
+static JsFormula physics_formula_to_js(const Physics::Formula& f) {
+    JsFormula jf;
+    jf.name = f.name;
+    jf.latex = f.latex;
+    jf.category = f.category;
+    for (const auto& v : f.variables) {
+        jf.variables.push_back({
+            v.name,
+            unit_to_latex(v.units),
+            v.description,
+            v.is_constant
+        });
+    }
+    return jf;
+}
+
+// ============================================================================
+// Lifecycle
+// ============================================================================
+
 bool dv_init() {
-    if (g_eval) return false; // Already initialized
+    if (g_eval) return false;
     g_eval = new Evaluator();
     return true;
 }
 
-WASM_EXPORT
 void dv_destroy() {
     delete g_eval;
     g_eval = nullptr;
 }
 
-WASM_EXPORT
 bool dv_is_initialized() {
     return g_eval != nullptr;
 }
 
 // ============================================================================
-// Constants Management
+// Constants
 // ============================================================================
 
-WASM_EXPORT
-bool dv_set_constant(const char* name, const char* value_expr, const char* unit_expr) {
-    if (!g_eval || !name || !value_expr) return false;
-    Expression expr{value_expr, unit_expr ? unit_expr : ""};
-    g_eval->insert_constant(name, expr);
+bool dv_set_constant(const std::string& name, const std::string& value_expr, const std::string& unit_expr) {
+    if (!g_eval) return false;
+    g_eval->insert_constant(name, Expression{value_expr, unit_expr});
     return true;
 }
 
-WASM_EXPORT
-bool dv_remove_constant(const char* name) {
-    if (!g_eval || !name) return false;
+bool dv_remove_constant(const std::string& name) {
+    if (!g_eval) return false;
     return g_eval->fixed_constants.erase(name) > 0;
 }
 
-WASM_EXPORT
 void dv_clear_constants() {
     if (g_eval) g_eval->fixed_constants.clear();
 }
 
-WASM_EXPORT
 int dv_get_constant_count() {
     return g_eval ? static_cast<int>(g_eval->fixed_constants.size()) : 0;
 }
 
 // ============================================================================
-// Single Expression Evaluation
+// Evaluation
 // ============================================================================
 
-struct dv_result {
-    double value;
-    int8_t unit[7];
-    bool success;
-    char error[256];
-    char unit_latex[256];
-    char value_scientific[256];
-    int value_count;          // 1 = scalar, >1 = array
-    double* extra_values;     // array values (NULL for scalar)
-    double imag;              // imaginary component
-    int sig_figs;             // -1 if not tracked
-};
+JsResult dv_eval(const std::string& value_expr, const std::string& unit_expr) {
+    if (!g_eval) return make_error_result("Evaluator not initialized");
 
-static void fill_result(dv_result& result, const EValue& ev) {
-    result.value = ev.value;
-    result.imag = ev.imag;
-    result.sig_figs = ev.sig_figs;
-    memcpy(result.unit, ev.unit.vec.data(), 7 * sizeof(int8_t));
-    result.success = true;
+    auto results = g_eval->evaluate_expression(
+        {Expression{value_expr, unit_expr}});
 
-    // Array support
-    if(!ev.extra_values.empty()) {
-        result.value_count = static_cast<int>(ev.extra_values.size());
-        result.extra_values = (double*)malloc(sizeof(double) * result.value_count);
-        for(int i = 0; i < result.value_count; i++) {
-            result.extra_values[i] = static_cast<double>(ev.extra_values[i]);
-        }
-    } else {
-        result.value_count = 1;
-        result.extra_values = nullptr;
-    }
+    if (results)
+        return evalue_to_js_result(results.value());
 
-    auto latex = ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC} ? "" : unit_to_latex(ev.unit);
-    strncpy(result.unit_latex, latex.c_str(), sizeof(result.unit_latex) - 1);
-    result.unit_latex[sizeof(result.unit_latex) - 1] = '\0';
-
-    auto sci = value_to_scientific(ev.value);
-    strncpy(result.value_scientific, sci.c_str(), sizeof(result.value_scientific) - 1);
-    result.value_scientific[sizeof(result.value_scientific) - 1] = '\0';
+    return make_error_result(results.error());
 }
 
-WASM_EXPORT
-dv_result dv_eval(const char* value_expr, const char* unit_expr) {
-    dv_result result = {};
-    result.extra_values = nullptr;
-    result.sig_figs = -1;
-
-    if (!g_eval) {
-        strncpy(result.error, "Evaluator not initialized", sizeof(result.error) - 1);
-        return result;
-    }
-
-    if (!value_expr) {
-        strncpy(result.error, "Null expression", sizeof(result.error) - 1);
-        return result;
-    }
-
-    Expression expr{value_expr, unit_expr ? unit_expr : ""};
-    std::vector<Expression> exprs = {expr};
-    auto results = g_eval->evaluate_expression_list(exprs);
-
-    if (results[0]) {
-        fill_result(result, results[0].value());
-    } else {
-        strncpy(result.error, results[0].error().c_str(), sizeof(result.error) - 1);
-        result.error[sizeof(result.error) - 1] = '\0';
-    }
-
-    return result;
-}
-
-WASM_EXPORT
-void dv_free_result(dv_result* result) {
-    if (result && result->extra_values) {
-        free(result->extra_values);
-        result->extra_values = nullptr;
-    }
-}
-
-// ============================================================================
-// Batch Evaluation (Multiple Expressions)
-// ============================================================================
-
-struct dv_batch_result {
-    double* values;
-    int8_t** units;
-    bool* successes;
-    char** errors;
-    char** unit_latexes;
-    char** value_scientifics;
-    int* value_counts;
-    double** extra_values_array;
-    double* imag_values;
-    int* sig_figs_array;
-    int count;
-};
-
-WASM_EXPORT
-dv_batch_result* dv_eval_batch(const char** value_exprs, const char** unit_exprs, int count) {
-    if (!g_eval || !value_exprs || count <= 0) return nullptr;
-
-    auto* batch = (dv_batch_result*)malloc(sizeof(dv_batch_result));
-    batch->count = count;
-    batch->values = (double*)malloc(sizeof(double) * count);
-    batch->units = (int8_t**)malloc(sizeof(int8_t*) * count);
-    for (int i = 0; i < count; i++) {
-        batch->units[i] = (int8_t*)malloc(sizeof(int8_t) * 7);
-    }
-    batch->successes = (bool*)malloc(sizeof(bool) * count);
-    batch->errors = (char**)malloc(sizeof(char*) * count);
-    batch->unit_latexes = (char**)malloc(sizeof(char*) * count);
-    batch->value_scientifics = (char**)malloc(sizeof(char*) * count);
-    batch->value_counts = (int*)malloc(sizeof(int) * count);
-    batch->extra_values_array = (double**)malloc(sizeof(double*) * count);
-    batch->imag_values = (double*)malloc(sizeof(double) * count);
-    batch->sig_figs_array = (int*)malloc(sizeof(int) * count);
+std::vector<JsResult> dv_eval_batch(const std::vector<std::string>& value_exprs,
+                                     const std::vector<std::string>& unit_exprs) {
+    if (!g_eval) return {};
 
     std::vector<Expression> exprs;
-    exprs.reserve(count);
-    for (int i = 0; i < count; i++) {
-        std::string unit = (unit_exprs && unit_exprs[i]) ? unit_exprs[i] : "";
-        exprs.push_back(Expression{value_exprs[i], std::move(unit)});
+    exprs.reserve(value_exprs.size());
+    for (size_t i = 0; i < value_exprs.size(); i++) {
+        std::string unit = (i < unit_exprs.size()) ? unit_exprs[i] : "";
+        exprs.push_back(Expression{value_exprs[i], unit});
     }
 
     auto results = g_eval->evaluate_expression_list(exprs);
 
-    for (int i = 0; i < count; i++) {
-        if (results[i]) {
-            const auto& ev = results[i].value();
-            batch->values[i] = ev.value;
-            batch->imag_values[i] = ev.imag;
-            batch->sig_figs_array[i] = ev.sig_figs;
-            memcpy(batch->units[i], ev.unit.vec.data(), 7 * sizeof(int8_t));
-            batch->successes[i] = true;
-            batch->errors[i] = nullptr;
-
-            // Array support
-            if(!ev.extra_values.empty()) {
-                batch->value_counts[i] = static_cast<int>(ev.extra_values.size());
-                batch->extra_values_array[i] = (double*)malloc(sizeof(double) * batch->value_counts[i]);
-                for(int j = 0; j < batch->value_counts[i]; j++) {
-                    batch->extra_values_array[i][j] = static_cast<double>(ev.extra_values[j]);
-                }
-            } else {
-                batch->value_counts[i] = 1;
-                batch->extra_values_array[i] = nullptr;
-            }
-
-            auto latex = ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC} ? "" : unit_to_latex(ev.unit);
-            batch->unit_latexes[i] = (char*)malloc(latex.length() + 1);
-            strcpy(batch->unit_latexes[i], latex.c_str());
-
-            auto sci = value_to_scientific(ev.value);
-            batch->value_scientifics[i] = (char*)malloc(sci.length() + 1);
-            strcpy(batch->value_scientifics[i], sci.c_str());
-        } else {
-            batch->values[i] = std::nan("");
-            batch->imag_values[i] = 0.0;
-            batch->sig_figs_array[i] = -1;
-            memset(batch->units[i], 0, 7 * sizeof(int8_t));
-            batch->successes[i] = false;
-            batch->unit_latexes[i] = nullptr;
-            batch->value_scientifics[i] = nullptr;
-            batch->value_counts[i] = 0;
-            batch->extra_values_array[i] = nullptr;
-
-            const auto& err = results[i].error();
-            batch->errors[i] = (char*)malloc(err.length() + 1);
-            strcpy(batch->errors[i], err.c_str());
-        }
+    std::vector<JsResult> out;
+    out.reserve(results.size());
+    for (const auto& r : results) {
+        if (r)
+            out.push_back(evalue_to_js_result(r.value()));
+        else
+            out.push_back(make_error_result(r.error()));
     }
-
-    return batch;
-}
-
-WASM_EXPORT
-void dv_free_batch_result(dv_batch_result* batch) {
-    if (!batch) return;
-
-    free(batch->values);
-    for (int i = 0; i < batch->count; i++) {
-        free(batch->units[i]);
-        free(batch->errors[i]);
-        free(batch->unit_latexes[i]);
-        free(batch->value_scientifics[i]);
-        free(batch->extra_values_array[i]);
-    }
-    free(batch->units);
-    free(batch->successes);
-    free(batch->errors);
-    free(batch->unit_latexes);
-    free(batch->value_scientifics);
-    free(batch->value_counts);
-    free(batch->extra_values_array);
-    free(batch->imag_values);
-    free(batch->sig_figs_array);
-
-    free(batch);
+    return out;
 }
 
 // ============================================================================
 // Formula Search
 // ============================================================================
 
-struct dv_formula_list {
-    char** names;
-    char** latexes;
-    char** categories;
-    char** variables_json;
-    int count;
-};
+std::vector<JsFormula> dv_get_available_formulas(const std::vector<int>& target_unit_vec) {
+    if (!g_eval || target_unit_vec.size() != 7) return {};
 
-static std::string escape_json_string(const std::string& s) {
-    std::string out;
-    out.reserve(s.size() + 8);
-    for (char c : s) {
-        switch (c) {
-            case '"':  out += "\\\""; break;
-            case '\\': out += "\\\\"; break;
-            case '\n': out += "\\n"; break;
-            default:   out += c;
-        }
-    }
+    UnitVector target;
+    for (int i = 0; i < 7; i++)
+        target.vec[i] = static_cast<int8_t>(target_unit_vec[i]);
+
+    auto formulas = g_eval->get_available_formulas(target);
+    std::vector<JsFormula> out;
+    out.reserve(formulas.size());
+    for (const auto& f : formulas)
+        out.push_back(physics_formula_to_js(f));
     return out;
 }
 
-static std::string variables_to_json(const std::vector<Physics::Variable>& vars) {
-    std::string json = "[";
-    for (size_t i = 0; i < vars.size(); i++) {
-        if (i > 0) json += ",";
-        json += "{\"name\":\"" + escape_json_string(vars[i].name) + "\"";
-        json += ",\"units\":\"" + escape_json_string(unit_to_latex(vars[i].units)) + "\"";
-        json += ",\"description\":\"" + escape_json_string(vars[i].description) + "\"";
-        json += ",\"is_constant\":";
-        json += vars[i].is_constant ? "true" : "false";
-        json += "}";
-    }
-    json += "]";
-    return json;
-}
+std::vector<JsFormula> dv_get_last_formula_results() {
+    if (!g_eval) return {};
 
-WASM_EXPORT
-dv_formula_list* dv_get_available_formulas(const int8_t* target_unit) {
-    if (!g_eval || !target_unit) return nullptr;
-
-    UnitVector target;
-    memcpy(target.vec.data(), target_unit, 7);
-
-    auto formulas = g_eval->get_available_formulas(target);
-
-    auto* list = (dv_formula_list*)malloc(sizeof(dv_formula_list));
-    list->count = static_cast<int>(formulas.size());
-    list->names = (char**)malloc(sizeof(char*) * list->count);
-    list->latexes = (char**)malloc(sizeof(char*) * list->count);
-    list->categories = (char**)malloc(sizeof(char*) * list->count);
-    list->variables_json = (char**)malloc(sizeof(char*) * list->count);
-
-    for (int i = 0; i < list->count; i++) {
-        list->names[i] = (char*)malloc(formulas[i].name.length() + 1);
-        strcpy(list->names[i], formulas[i].name.c_str());
-
-        list->latexes[i] = (char*)malloc(formulas[i].latex.length() + 1);
-        strcpy(list->latexes[i], formulas[i].latex.c_str());
-
-        list->categories[i] = (char*)malloc(formulas[i].category.length() + 1);
-        strcpy(list->categories[i], formulas[i].category.c_str());
-
-        auto vars_json = variables_to_json(formulas[i].variables);
-        list->variables_json[i] = (char*)malloc(vars_json.length() + 1);
-        strcpy(list->variables_json[i], vars_json.c_str());
-    }
-
-    return list;
-}
-
-WASM_EXPORT
-void dv_free_formula_list(dv_formula_list* list) {
-    if (!list) return;
-
-    for (int i = 0; i < list->count; i++) {
-        free(list->names[i]);
-        free(list->latexes[i]);
-        free(list->categories[i]);
-        free(list->variables_json[i]);
-    }
-    free(list->names);
-    free(list->latexes);
-    free(list->categories);
-    free(list->variables_json);
-
-    free(list);
+    std::vector<JsFormula> out;
+    out.reserve(g_eval->last_formula_results.size());
+    for (const auto& f : g_eval->last_formula_results)
+        out.push_back(physics_formula_to_js(f));
+    return out;
 }
 
 // ============================================================================
-// Variables Management
+// Variables
 // ============================================================================
 
-WASM_EXPORT
-bool dv_get_variable(const char* name, double* out_value) {
-    if (!g_eval || !name || !out_value) return false;
-
+val dv_get_variable(const std::string& name) {
+    if (!g_eval) return val::null();
     auto it = g_eval->evaluated_variables.find(name);
-    if (it == g_eval->evaluated_variables.end()) return false;
-
-    *out_value = it->second.value;
-    return true;
+    if (it == g_eval->evaluated_variables.end()) return val::null();
+    return val(it->second.value);
 }
 
-WASM_EXPORT
 void dv_clear_variables() {
     if (g_eval) g_eval->evaluated_variables.clear();
 }
 
-WASM_EXPORT
 int dv_get_variable_count() {
     return g_eval ? static_cast<int>(g_eval->evaluated_variables.size()) : 0;
 }
 
 // ============================================================================
-// Last Formula Results
+// Unit Utilities
 // ============================================================================
 
-WASM_EXPORT
-dv_formula_list* dv_get_last_formula_results() {
-    if (!g_eval) return nullptr;
-
-    const auto& formulas = g_eval->last_formula_results;
-    if (formulas.empty()) return nullptr;
-
-    auto* list = (dv_formula_list*)malloc(sizeof(dv_formula_list));
-    list->count = static_cast<int>(formulas.size());
-    list->names = (char**)malloc(sizeof(char*) * list->count);
-    list->latexes = (char**)malloc(sizeof(char*) * list->count);
-    list->categories = (char**)malloc(sizeof(char*) * list->count);
-    list->variables_json = (char**)malloc(sizeof(char*) * list->count);
-
-    for (int i = 0; i < list->count; i++) {
-        list->names[i] = (char*)malloc(formulas[i].name.length() + 1);
-        strcpy(list->names[i], formulas[i].name.c_str());
-
-        list->latexes[i] = (char*)malloc(formulas[i].latex.length() + 1);
-        strcpy(list->latexes[i], formulas[i].latex.c_str());
-
-        list->categories[i] = (char*)malloc(formulas[i].category.length() + 1);
-        strcpy(list->categories[i], formulas[i].category.c_str());
-
-        auto vars_json = variables_to_json(formulas[i].variables);
-        list->variables_json[i] = (char*)malloc(vars_json.length() + 1);
-        strcpy(list->variables_json[i], vars_json.c_str());
-    }
-
-    return list;
-}
-
-// ============================================================================
-// Value Utilities
-// ============================================================================
-
-WASM_EXPORT
-void dv_unit_latex_to_unit(const char* unit_latex, int8_t* out_unit) {
-    if (!unit_latex || !out_unit) return;
+std::vector<int> dv_unit_latex_to_unit(const std::string& unit_latex) {
     auto unit = unit_latex_to_unit(unit_latex);
-    memcpy(out_unit, unit.vec.data(), 7 * sizeof(int8_t));
+    std::vector<int> out(7);
+    for (int i = 0; i < 7; i++)
+        out[i] = unit.vec[i];
+    return out;
 }
 
-WASM_EXPORT
-const char* dv_unit_to_latex(const int8_t* unit) {
-    if (!unit) return nullptr;
+std::string dv_unit_to_latex(const std::vector<int>& unit_vec) {
+    if (unit_vec.size() != 7) return "";
     UnitVector uv;
-    memcpy(uv.vec.data(), unit, 7 * sizeof(int8_t));
-    auto latex = unit_to_latex(uv);
-    char* result = (char*)malloc(latex.length() + 1);
-    strcpy(result, latex.c_str());
-    return result;
+    for (int i = 0; i < 7; i++)
+        uv.vec[i] = static_cast<int8_t>(unit_vec[i]);
+    return unit_to_latex(uv);
 }
 
-WASM_EXPORT
-const char* dv_value_to_scientific(double value) {
-    auto sci = value_to_scientific(static_cast<double>(value));
-    char* result = (char*)malloc(sci.length() + 1);
-    strcpy(result, sci.c_str());
-    return result;
+std::string dv_value_to_scientific(double value) {
+    return value_to_scientific(value);
 }
 
-// ============================================================================
-// Memory Management Helpers
-// ============================================================================
-
-WASM_EXPORT
-void dv_free(void* ptr) {
-    free(ptr);
-}
-
-// ============================================================================
-// Version Info
-// ============================================================================
-
-WASM_EXPORT
-const char* dv_version() {
+std::string dv_version() {
     return "2.0.0";
 }
 
-} // extern "C"
+// ============================================================================
+// Embind Registrations
+// ============================================================================
+
+EMSCRIPTEN_BINDINGS(UnitEval) {
+
+    // --- Structs ---
+
+    value_object<JsFormulaVariable>("FormulaVariable")
+        .field("name",        &JsFormulaVariable::name)
+        .field("units",       &JsFormulaVariable::units)
+        .field("description", &JsFormulaVariable::description)
+        .field("is_constant", &JsFormulaVariable::is_constant);
+
+    value_object<JsFormula>("Formula")
+        .field("name",      &JsFormula::name)
+        .field("latex",     &JsFormula::latex)
+        .field("category",  &JsFormula::category)
+        .field("variables", &JsFormula::variables);
+
+    value_object<JsResult>("Result")
+        .field("value",           &JsResult::value)
+        .field("imag",            &JsResult::imag)
+        .field("sig_figs",        &JsResult::sig_figs)
+        .field("unit",            &JsResult::unit)
+        .field("success",         &JsResult::success)
+        .field("error",           &JsResult::error)
+        .field("unit_latex",      &JsResult::unit_latex)
+        .field("value_scientific",&JsResult::value_scientific)
+        .field("extra_values",    &JsResult::extra_values);
+
+    // --- Vectors ---
+
+    register_vector<int>("VectorInt");
+    register_vector<double>("VectorDouble");
+    register_vector<std::string>("VectorString");
+    register_vector<JsResult>("VectorResult");
+    register_vector<JsFormula>("VectorFormula");
+    register_vector<JsFormulaVariable>("VectorFormulaVariable");
+
+    // --- Lifecycle ---
+
+    function("dv_init",           &dv_init);
+    function("dv_destroy",        &dv_destroy);
+    function("dv_is_initialized", &dv_is_initialized);
+
+    // --- Constants ---
+
+    function("dv_set_constant",      &dv_set_constant);
+    function("dv_remove_constant",   &dv_remove_constant);
+    function("dv_clear_constants",   &dv_clear_constants);
+    function("dv_get_constant_count",&dv_get_constant_count);
+
+    // --- Evaluation ---
+
+    function("dv_eval",       &dv_eval);
+    function("dv_eval_batch", &dv_eval_batch);
+
+    // --- Formulas ---
+
+    function("dv_get_available_formulas",  &dv_get_available_formulas);
+    function("dv_get_last_formula_results",&dv_get_last_formula_results);
+
+    // --- Variables ---
+
+    function("dv_get_variable",      &dv_get_variable);
+    function("dv_clear_variables",   &dv_clear_variables);
+    function("dv_get_variable_count",&dv_get_variable_count);
+
+    // --- Utilities ---
+
+    function("dv_unit_latex_to_unit",  &dv_unit_latex_to_unit);
+    function("dv_unit_to_latex",       &dv_unit_to_latex);
+    function("dv_value_to_scientific", &dv_value_to_scientific);
+    function("dv_version",             &dv_version);
+}

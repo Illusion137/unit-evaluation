@@ -8,6 +8,43 @@
 #include <algorithm>
 #include <numeric>
 
+// ============================================================================
+// Local helpers for extracting from EValue variant
+// ============================================================================
+namespace {
+    // Real (scalar) part
+    long double get_real(const dv::EValue &e) {
+        if (auto p = std::get_if<dv::UnitValue>(&e)) return p->value;
+        if (auto p = std::get_if<dv::UnitValueList>(&e)) return p->elements.empty() ? 0.0L : p->elements[0].value;
+        if (auto p = std::get_if<dv::BooleanValue>(&e)) return p->value ? 1.0L : 0.0L;
+        return 0.0L;
+    }
+    // Imaginary part
+    long double get_imag(const dv::EValue &e) {
+        if (auto p = std::get_if<dv::UnitValue>(&e)) return p->imag;
+        return 0.0L;
+    }
+    // Unit vector
+    dv::UnitVector get_unit(const dv::EValue &e) {
+        if (auto p = std::get_if<dv::UnitValue>(&e)) return p->unit;
+        if (auto p = std::get_if<dv::UnitValueList>(&e))
+            return p->elements.empty() ? dv::UnitVector{dv::DIMENSIONLESS_VEC} : p->elements[0].unit;
+        return dv::UnitVector{dv::DIMENSIONLESS_VEC};
+    }
+    // Extract as UnitValue (first element for lists)
+    dv::UnitValue as_uv(const dv::EValue &e) {
+        if (auto p = std::get_if<dv::UnitValue>(&e)) return *p;
+        if (auto p = std::get_if<dv::UnitValueList>(&e)) return p->elements.empty() ? dv::UnitValue{} : p->elements[0];
+        if (auto p = std::get_if<dv::BooleanValue>(&e)) return dv::UnitValue{p->value ? 1.0L : 0.0L};
+        return dv::UnitValue{};
+    }
+
+}
+
+// ============================================================================
+// clone
+// ============================================================================
+
 std::unique_ptr<dv::AST> dv::AST::clone() const {
     auto result = std::make_unique<AST>();
     result->token = this->token;
@@ -30,6 +67,10 @@ std::unique_ptr<dv::AST> dv::AST::clone() const {
     return result;
 }
 
+// ============================================================================
+// evaluate dispatch
+// ============================================================================
+
 dv::MaybeEValue dv::AST::evaluate(dv::Evaluator &evalulator) {
     return evaluate(this, evalulator);
 }
@@ -43,7 +84,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(expr.lhs->token.type == TokenType::FORMULA_QUERY) {
                 auto rhs = expr.rhs->evaluate(evalulator);
                 if(!rhs) return rhs;
-                evalulator.last_formula_results = evalulator.get_available_formulas(rhs->unit);
+                evalulator.last_formula_results = evalulator.get_available_formulas(get_unit(*rhs));
                 return *rhs;
             }
             // Custom function definition: f(x,y) = expr
@@ -57,18 +98,17 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
                     }
                     param_names.emplace_back(arg->token.text);
                 }
-                CustomFunction cf;
-                cf.name = func_name;
-                cf.param_names = std::move(param_names);
-                cf.body = expr.rhs->clone();
-                evalulator.custom_functions.insert_or_assign(func_name, std::move(cf));
-                return EValue{0.0}; // function defined
+                dv::Function f;
+                f.name = func_name;
+                f.param_names = std::move(param_names);
+                f.body = std::shared_ptr<AST>(expr.rhs->clone().release());
+                evalulator.custom_functions.insert_or_assign(func_name, std::move(f));
+                return EValue{UnitValue{0.0L}};
             }
             auto value = expr.rhs->evaluate(evalulator);
             if(!value) return value;
             evalulator.evaluated_variables.insert_or_assign(
                 std::string{expr.lhs->token.text}, *value);
-            // Store source expression for sig-fig tracking
             evalulator.variable_source_expressions.insert_or_assign(
                 std::string{expr.lhs->token.text}, std::string{expr.rhs->token.text});
             return value;
@@ -81,12 +121,9 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
                 return evalulator.fixed_constants.at(token_id);
             if(evalulator.evaluated_variables.contains(token_id))
                 return evalulator.evaluated_variables.at(token_id);
-            // Imaginary unit 'i' - only if not otherwise defined
+            // Imaginary unit 'i' — only if not otherwise defined
             if(token_id == "i") {
-                EValue imag_unit;
-                imag_unit.value = 0.0;
-                imag_unit.imag = 1.0;
-                return imag_unit;
+                return UnitValue{0.0L, 1.0L, UnitVector{DIMENSIONLESS_VEC}};
             }
             return std::unexpected{std::format("Undefined variable '{}'", token_id)};
         }
@@ -103,7 +140,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             const auto &expr = std::get<ASTExpression>(ast->data);
             auto lhs = expr.lhs->evaluate(evalulator);
             if(!lhs) return lhs;
-            if(!expr.rhs) return -*lhs;
+            if(!expr.rhs) return -(*lhs);
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
             return *lhs - *rhs;
@@ -114,11 +151,10 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            // Returns array [lhs+rhs, lhs-rhs]
-            EValue result;
-            result.unit = lhs->unit + rhs->unit;
-            result.extra_values = {lhs->value + rhs->value, lhs->value - rhs->value};
-            result.value = result.extra_values[0];
+            // Returns UnitValueList {lhs+rhs, lhs-rhs}
+            UnitValue l = as_uv(*lhs), r = as_uv(*rhs);
+            UnitValueList result;
+            result.elements = {l + r, l - r};
             return result;
         }
         case TokenType::TIMES: {
@@ -149,12 +185,12 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
         case TokenType::FACTORIAL: {
             auto lhs = std::get<ASTExpression>(ast->data).lhs->evaluate(evalulator);
             if(!lhs) return lhs;
-            return lhs->fact();
+            return dv::evalue_fact(*lhs);
         }
         case TokenType::PERCENT: {
             auto lhs = std::get<ASTExpression>(ast->data).lhs->evaluate(evalulator);
             if(!lhs) return lhs;
-            return *lhs / EValue{100.0};
+            return *lhs / EValue{UnitValue{100.0L}};
         }
         case TokenType::MODULO: {
             const auto &expr = std::get<ASTExpression>(ast->data);
@@ -162,7 +198,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            return EValue{std::fmod(lhs->value, rhs->value)};
+            return UnitValue{std::fmod((double)get_real(*lhs), (double)get_real(*rhs))};
         }
         // Comparison operators
         case TokenType::LESS_THAN: {
@@ -171,7 +207,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            return EValue{lhs->value < rhs->value ? 1.0L : 0.0L};
+            return UnitValue{get_real(*lhs) < get_real(*rhs) ? 1.0L : 0.0L};
         }
         case TokenType::GREATER_THAN: {
             const auto &expr = std::get<ASTExpression>(ast->data);
@@ -179,7 +215,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            return EValue{lhs->value > rhs->value ? 1.0L : 0.0L};
+            return UnitValue{get_real(*lhs) > get_real(*rhs) ? 1.0L : 0.0L};
         }
         case TokenType::LESS_EQUAL: {
             const auto &expr = std::get<ASTExpression>(ast->data);
@@ -187,7 +223,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            return EValue{lhs->value <= rhs->value ? 1.0L : 0.0L};
+            return UnitValue{get_real(*lhs) <= get_real(*rhs) ? 1.0L : 0.0L};
         }
         case TokenType::GREATER_EQUAL: {
             const auto &expr = std::get<ASTExpression>(ast->data);
@@ -195,7 +231,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            return EValue{lhs->value >= rhs->value ? 1.0L : 0.0L};
+            return UnitValue{get_real(*lhs) >= get_real(*rhs) ? 1.0L : 0.0L};
         }
         case TokenType::LOGICAL_AND: {
             const auto &expr = std::get<ASTExpression>(ast->data);
@@ -203,7 +239,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            return EValue{(lhs->value != 0.0 && rhs->value != 0.0) ? 1.0L : 0.0L};
+            return UnitValue{(get_real(*lhs) != 0.0 && get_real(*rhs) != 0.0) ? 1.0L : 0.0L};
         }
         case TokenType::LOGICAL_OR: {
             const auto &expr = std::get<ASTExpression>(ast->data);
@@ -211,104 +247,90 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!lhs) return lhs;
             auto rhs = expr.rhs->evaluate(evalulator);
             if(!rhs) return rhs;
-            return EValue{(lhs->value != 0.0 || rhs->value != 0.0) ? 1.0L : 0.0L};
+            return UnitValue{(get_real(*lhs) != 0.0 || get_real(*rhs) != 0.0) ? 1.0L : 0.0L};
         }
         case TokenType::LOGICAL_NOT: {
             const auto &expr = std::get<ASTExpression>(ast->data);
             auto lhs = expr.lhs->evaluate(evalulator);
             if(!lhs) return lhs;
-            return EValue{lhs->value == 0.0 ? 1.0L : 0.0L};
+            return UnitValue{get_real(*lhs) == 0.0 ? 1.0L : 0.0L};
         }
-        // Array literal
+        // Array literal — returns UnitValueList
         case TokenType::ARRAY_LITERAL: {
             const auto &call = std::get<ASTCall>(ast->data);
-            if(call.args.empty()) return EValue{0.0};
-            EValue result;
-            result.extra_values.reserve(call.args.size());
+            if(call.args.empty()) return EValue{UnitValueList{}};
+            UnitValueList result;
+            result.elements.reserve(call.args.size());
             for(const auto &arg : call.args) {
                 auto val = arg->evaluate(evalulator);
                 if(!val) return val;
-                result.extra_values.push_back(val->value);
-                result.unit = val->unit; // use last element's unit
+                result.elements.push_back(as_uv(*val));
             }
-            result.value = result.extra_values[0];
             return result;
         }
         // Array indexing
         case TokenType::INDEX_ACCESS: {
             const auto &expr = std::get<ASTExpression>(ast->data);
-            auto arr = expr.lhs->evaluate(evalulator);
-            if(!arr) return arr;
-            auto idx = expr.rhs->evaluate(evalulator);
-            if(!idx) return idx;
-            std::size_t index = (std::size_t)idx->value;
-            if(index >= arr->size()) {
-                return std::unexpected{std::format("Index {} out of bounds (size {})", index, arr->size())};
+            auto arr_ev = expr.lhs->evaluate(evalulator);
+            if(!arr_ev) return arr_ev;
+            auto idx_ev = expr.rhs->evaluate(evalulator);
+            if(!idx_ev) return idx_ev;
+            std::size_t index = (std::size_t)get_real(*idx_ev);
+            if(auto* list = std::get_if<UnitValueList>(&*arr_ev)) {
+                if(index >= list->elements.size()) {
+                    return std::unexpected{std::format("Index {} out of bounds (size {})", index, list->elements.size())};
+                }
+                return list->elements[index];
             }
-            return EValue{arr->at(index), arr->unit};
-        }
-        // Transpose
-        case TokenType::TRANSPOSE: {
-            const auto &expr = std::get<ASTExpression>(ast->data);
-            auto mat = expr.lhs->evaluate(evalulator);
-            if(!mat) return mat;
-            if(!mat->matrix) return std::unexpected{"Transpose requires a matrix"};
-            auto &m = *mat->matrix;
-            std::size_t rows = m.size(), cols = m[0].size();
-            std::vector<std::vector<long double>> transposed(cols, std::vector<long double>(rows));
-            for(std::size_t i = 0; i < rows; i++)
-                for(std::size_t j = 0; j < cols; j++)
-                    transposed[j][i] = m[i][j];
-            EValue result;
-            result.matrix = std::move(transposed);
-            result.value = result.matrix->at(0).at(0);
-            result.unit = mat->unit;
-            return result;
+            // Single UnitValue — only index 0 valid
+            if(index != 0)
+                return std::unexpected{std::format("Index {} out of bounds (scalar value)", index)};
+            return as_uv(*arr_ev);
         }
         // Builtins
         case TokenType::BUILTIN_FUNC_LN: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::ln(arg->value);
+            return dv::builtins::ln(as_uv(*arg));
         }
         case TokenType::BUILTIN_FUNC_SIN: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::sin(arg->value);
+            return dv::builtins::sin(as_uv(*arg));
         }
         case TokenType::BUILTIN_FUNC_COS: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::cos(arg->value);
+            return dv::builtins::cos(as_uv(*arg));
         }
         case TokenType::BUILTIN_FUNC_TAN: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::tan(arg->value);
+            return dv::builtins::tan(as_uv(*arg));
         }
         case TokenType::BUILTIN_FUNC_SEC: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::sec(arg->value);
+            return dv::builtins::sec(as_uv(*arg).value);
         }
         case TokenType::BUILTIN_FUNC_CSC: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::csc(arg->value);
+            return dv::builtins::csc(as_uv(*arg).value);
         }
         case TokenType::BUILTIN_FUNC_COT: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::cot(arg->value);
+            return dv::builtins::cot(as_uv(*arg).value);
         }
         case TokenType::BUILTIN_FUNC_LOG: {
             const auto &call = std::get<ASTCall>(ast->data);
             auto arg = call.args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            if(!call.special_value) return dv::builtins::log(arg->value);
+            if(!call.special_value) return dv::builtins::log(get_real(*arg));
             auto base = call.special_value->evaluate(evalulator);
             if(!base) return base;
-            return dv::builtins::log(arg->value, base->value);
+            return dv::builtins::log(get_real(*arg), (std::int32_t)get_real(*base));
         }
         case TokenType::ABSOLUTE_BAR:
         case TokenType::BUILTIN_FUNC_ABS: {
@@ -322,7 +344,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!a) return a;
             auto b = args[1]->evaluate(evalulator);
             if(!b) return b;
-            return dv::builtins::nCr(a->value, b->value);
+            return dv::builtins::nCr(get_real(*a), get_real(*b));
         }
         case TokenType::BUILTIN_FUNC_NPR: {
             const auto &args = std::get<ASTCall>(ast->data).args;
@@ -330,24 +352,22 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!a) return a;
             auto b = args[1]->evaluate(evalulator);
             if(!b) return b;
-            return dv::builtins::nPr(a->value, b->value);
+            return dv::builtins::nPr(get_real(*a), get_real(*b));
         }
         case TokenType::BUILTIN_FUNC_SQRT: {
             const auto &call = std::get<ASTCall>(ast->data);
             auto arg = call.args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            // Handle sqrt of negative -> complex
-            // TODO handle complex numbers
-            // if(arg->value < 0 && !call.special_value) {
-            //     EValue result;
-            //     result.value = 0.0;
-            //     result.imag = std::sqrt(-arg->value);
-            //     return result;
-            // }
+            // Handle sqrt of negative value → pure imaginary
+            if(auto* uv = std::get_if<UnitValue>(&*arg)) {
+                if(uv->value < 0.0L && uv->imag == 0.0L && !call.special_value) {
+                    return UnitValue{0.0L, (long double)std::sqrt((double)(-uv->value)), uv->unit};
+                }
+            }
             if(!call.special_value) return dv::builtins::nthsqrt(*arg, 2.0);
             auto n = call.special_value->evaluate(evalulator);
             if(!n) return n;
-            return dv::builtins::nthsqrt(*arg, n->value);
+            return dv::builtins::nthsqrt(*arg, (double)get_real(*n));
         }
         case TokenType::BUILTIN_FUNC_CEIL: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
@@ -370,47 +390,47 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!a) return a;
             auto b = args[1]->evaluate(evalulator);
             if(!b) return b;
-            return dv::builtins::round(*a, b->value);
+            return dv::builtins::round(*a, (double)get_real(*b));
         }
         case TokenType::BUILTIN_FUNC_ARCSIN: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::arcsin(arg->value);
+            return dv::builtins::arcsin(get_real(*arg));
         }
         case TokenType::BUILTIN_FUNC_ARCCOS: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::arccos(arg->value);
+            return dv::builtins::arccos(get_real(*arg));
         }
         case TokenType::BUILTIN_FUNC_ARCTAN: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::arctan(arg->value);
+            return dv::builtins::arctan(get_real(*arg));
         }
         case TokenType::BUILTIN_FUNC_ARCSEC: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::arcsec(arg->value);
+            return dv::builtins::arcsec(get_real(*arg));
         }
         case TokenType::BUILTIN_FUNC_ARCCSC: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::arccsc(arg->value);
+            return dv::builtins::arccsc(get_real(*arg));
         }
         case TokenType::BUILTIN_FUNC_ARCCOT: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return dv::builtins::arccot(arg->value);
+            return dv::builtins::arccot(get_real(*arg));
         }
         case TokenType::BUILTIN_FUNC_VALUE: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return EValue{arg->value};
+            return UnitValue{get_real(*arg)};
         }
         case TokenType::BUILTIN_FUNC_UNIT: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return EValue{1.0, arg->unit};
+            return UnitValue{1.0L, get_unit(*arg)};
         }
         // Summation
         case TokenType::BUILTIN_FUNC_SUM: {
@@ -420,17 +440,16 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             auto end_val = call.args[1]->evaluate(evalulator);
             if(!end_val) return end_val;
             std::string loop_var = std::string(call.special_value->token.text);
-            int start = (int)start_val->value;
-            int end = (int)end_val->value;
+            int start = (int)get_real(*start_val);
+            int end   = (int)get_real(*end_val);
 
-            // Save and restore loop variable
-            EValue saved;
+            EValue saved{UnitValue{0.0L}};
             bool had_var = evalulator.evaluated_variables.contains(loop_var);
             if(had_var) saved = evalulator.evaluated_variables.at(loop_var);
 
-            EValue accumulator{0.0};
+            EValue accumulator{UnitValue{0.0L}};
             for(int i = start; i <= end; i++) {
-                evalulator.evaluated_variables.insert_or_assign(loop_var, EValue{(long double)i});
+                evalulator.evaluated_variables.insert_or_assign(loop_var, EValue{UnitValue{(long double)i}});
                 auto body_val = call.args[2]->evaluate(evalulator);
                 if(!body_val) {
                     if(had_var) evalulator.evaluated_variables.insert_or_assign(loop_var, saved);
@@ -452,16 +471,16 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             auto end_val = call.args[1]->evaluate(evalulator);
             if(!end_val) return end_val;
             std::string loop_var = std::string(call.special_value->token.text);
-            int start = (int)start_val->value;
-            int end = (int)end_val->value;
+            int start = (int)get_real(*start_val);
+            int end   = (int)get_real(*end_val);
 
-            EValue saved;
+            EValue saved{UnitValue{0.0L}};
             bool had_var = evalulator.evaluated_variables.contains(loop_var);
             if(had_var) saved = evalulator.evaluated_variables.at(loop_var);
 
-            EValue accumulator{1.0};
+            EValue accumulator{UnitValue{1.0L}};
             for(int i = start; i <= end; i++) {
-                evalulator.evaluated_variables.insert_or_assign(loop_var, EValue{(long double)i});
+                evalulator.evaluated_variables.insert_or_assign(loop_var, EValue{UnitValue{(long double)i}});
                 auto body_val = call.args[2]->evaluate(evalulator);
                 if(!body_val) {
                     if(had_var) evalulator.evaluated_variables.insert_or_assign(loop_var, saved);
@@ -482,26 +501,26 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             int order = (int)ast->token.value.value;
             if(order < 1) order = 1;
 
-            // Check if variable is defined
             bool var_defined = evalulator.evaluated_variables.contains(var_name) ||
                                evalulator.fixed_constants.contains(var_name);
 
             if(var_defined) {
-                // Numerical derivative at the current value
                 long double x_val;
                 if(evalulator.evaluated_variables.contains(var_name))
-                    x_val = evalulator.evaluated_variables.at(var_name).value;
+                    x_val = get_real(evalulator.evaluated_variables.at(var_name));
                 else
-                    x_val = evalulator.fixed_constants.at(var_name).value;
+                    x_val = get_real(evalulator.fixed_constants.at(var_name));
 
                 long double h = 1e-7;
-                // Apply derivative order times
                 auto eval_at = [&](long double x) -> long double {
-                    auto saved = evalulator.evaluated_variables[var_name];
-                    evalulator.evaluated_variables[var_name] = EValue{x};
+                    EValue saved_v{UnitValue{0.0L}};
+                    bool had = evalulator.evaluated_variables.contains(var_name);
+                    if(had) saved_v = evalulator.evaluated_variables[var_name];
+                    evalulator.evaluated_variables[var_name] = EValue{UnitValue{x}};
                     auto result = call.args[0]->evaluate(evalulator);
-                    evalulator.evaluated_variables[var_name] = saved;
-                    return result ? result->value : 0.0;
+                    if(had) evalulator.evaluated_variables[var_name] = saved_v;
+                    else    evalulator.evaluated_variables.erase(var_name);
+                    return result ? get_real(*result) : 0.0L;
                 };
 
                 long double result = 0;
@@ -510,28 +529,21 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
                 } else if(order == 2) {
                     result = (eval_at(x_val + h) - 2 * eval_at(x_val) + eval_at(x_val - h)) / (h * h);
                 } else {
-                    // Higher order: apply first derivative repeatedly
-                    // For simplicity, use recursive central difference
-                    long double h_n = std::pow(1e-7, 1.0 / order);
-                    result = eval_at(x_val + h_n) - eval_at(x_val - h_n);
-                    result /= (2 * h_n);
-                    for(int n = 1; n < order; n++) {
-                        // Numerical re-differentiation with widening h
-                        h_n *= 10;
-                    }
+                    long double h_n = (long double)std::pow(1e-7, 1.0 / order);
+                    result = (eval_at(x_val + h_n) - eval_at(x_val - h_n)) / (2 * h_n);
                 }
-                return EValue{result};
+                return UnitValue{result};
             } else {
-                // Create a custom function that computes the derivative
-                CustomFunction cf;
-                cf.name = "__deriv_" + var_name;
-                cf.param_names = {var_name};
-                cf.body = ast->clone(); // store the derivative AST itself
-                evalulator.custom_functions.insert_or_assign(cf.name, std::move(cf));
-                return EValue{0.0}; // deferred
+                // Return a Function that, when called, computes the derivative
+                dv::Function f;
+                f.name = "__deriv_" + var_name;
+                f.param_names = {var_name};
+                f.body = std::shared_ptr<AST>(ast->clone().release());
+                evalulator.custom_functions.insert_or_assign(f.name, f);
+                return f;
             }
         }
-        // f'(x) - prime derivative of custom function
+        // f'(x) — prime derivative of custom function
         case TokenType::PRIME: {
             const auto &call = std::get<ASTCall>(ast->data);
             std::string func_name = std::string(ast->token.text);
@@ -543,23 +555,21 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             }
             auto &cf = evalulator.custom_functions.at(func_name);
 
-            // Evaluate arguments
-            std::vector<EValue> arg_values;
+            std::vector<UnitValue> arg_values;
             for(const auto &arg : call.args) {
                 auto val = arg->evaluate(evalulator);
                 if(!val) return val;
-                arg_values.push_back(*val);
+                arg_values.push_back(as_uv(*val));
             }
 
             long double h = 1e-7;
             auto eval_func = [&](long double x) -> long double {
-                // Save, bind, evaluate, restore
                 std::map<std::string, EValue> saved_vars;
                 for(std::size_t i = 0; i < cf.param_names.size(); i++) {
                     if(evalulator.evaluated_variables.contains(cf.param_names[i]))
                         saved_vars[cf.param_names[i]] = evalulator.evaluated_variables[cf.param_names[i]];
-                    if(i == 0) evalulator.evaluated_variables[cf.param_names[i]] = EValue{x};
-                    else if(i < arg_values.size()) evalulator.evaluated_variables[cf.param_names[i]] = arg_values[i];
+                    if(i == 0) evalulator.evaluated_variables[cf.param_names[i]] = EValue{UnitValue{x}};
+                    else if(i < arg_values.size()) evalulator.evaluated_variables[cf.param_names[i]] = EValue{arg_values[i]};
                 }
                 auto result = cf.body->evaluate(evalulator);
                 for(auto &[k, v] : saved_vars)
@@ -568,17 +578,17 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
                     if(!saved_vars.contains(cf.param_names[i]))
                         evalulator.evaluated_variables.erase(cf.param_names[i]);
                 }
-                return result ? result->value : 0.0;
+                return result ? get_real(*result) : 0.0L;
             };
 
-            long double x_val = arg_values.empty() ? 0.0 : arg_values[0].value;
+            long double x_val = arg_values.empty() ? 0.0L : arg_values[0].value;
             long double result = 0;
             if(order == 1) {
                 result = (eval_func(x_val + h) - eval_func(x_val - h)) / (2 * h);
             } else {
                 result = (eval_func(x_val + h) - 2 * eval_func(x_val) + eval_func(x_val - h)) / (h * h);
             }
-            return EValue{result};
+            return UnitValue{result};
         }
         // Integral: Simpson's 1/3 rule
         case TokenType::BUILTIN_FUNC_INT: {
@@ -589,18 +599,18 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(!upper) return upper;
             std::string int_var = std::string(call.special_value->token.text);
 
-            long double a = lower->value, b = upper->value;
-            int n = 1000; // subdivisions (must be even)
+            long double a = get_real(*lower), b = get_real(*upper);
+            int n = 1000;
             long double h_step = (b - a) / n;
 
-            EValue saved;
+            EValue saved{UnitValue{0.0L}};
             bool had_var = evalulator.evaluated_variables.contains(int_var);
             if(had_var) saved = evalulator.evaluated_variables.at(int_var);
 
             auto eval_at = [&](long double x) -> long double {
-                evalulator.evaluated_variables[int_var] = EValue{x};
+                evalulator.evaluated_variables[int_var] = EValue{UnitValue{x}};
                 auto result = call.args[2]->evaluate(evalulator);
-                return result ? result->value : 0.0;
+                return result ? get_real(*result) : 0.0L;
             };
 
             long double sum = eval_at(a) + eval_at(b);
@@ -613,8 +623,7 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             if(had_var) evalulator.evaluated_variables.insert_or_assign(int_var, saved);
             else evalulator.evaluated_variables.erase(int_var);
 
-            // Unit: body_unit * var_unit
-            return EValue{sum};
+            return UnitValue{sum};
         }
         // Custom function call
         case TokenType::FUNC_CALL: {
@@ -630,7 +639,6 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
                     func_name, cf.param_names.size(), call.args.size())};
             }
 
-            // Evaluate arguments
             std::vector<EValue> arg_values;
             for(const auto &arg : call.args) {
                 auto val = arg->evaluate(evalulator);
@@ -638,7 +646,6 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
                 arg_values.push_back(*val);
             }
 
-            // Save old variable values, bind params
             std::map<std::string, EValue> saved_vars;
             for(std::size_t i = 0; i < cf.param_names.size(); i++) {
                 if(evalulator.evaluated_variables.contains(cf.param_names[i]))
@@ -648,7 +655,6 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
 
             auto result = cf.body->evaluate(evalulator);
 
-            // Restore
             for(auto &[k, v] : saved_vars)
                 evalulator.evaluated_variables[k] = v;
             for(std::size_t i = 0; i < cf.param_names.size(); i++) {
@@ -663,174 +669,91 @@ dv::MaybeEValue dv::AST::evaluate(const AST *ast, dv::Evaluator &evalulator) {
             const auto &args = std::get<ASTCall>(ast->data).args;
             auto first = args[0]->evaluate(evalulator);
             if(!first) return first;
-            long double result = first->value;
+            long double result = get_real(*first);
             for(std::size_t i = 1; i < args.size(); i++) {
                 auto val = args[i]->evaluate(evalulator);
                 if(!val) return val;
-                result = std::min(result, val->value);
+                result = std::min(result, get_real(*val));
             }
-            return EValue{result, first->unit};
+            return UnitValue{result, get_unit(*first)};
         }
         case TokenType::BUILTIN_FUNC_MAX: {
             const auto &args = std::get<ASTCall>(ast->data).args;
             auto first = args[0]->evaluate(evalulator);
             if(!first) return first;
-            long double result = first->value;
+            long double result = get_real(*first);
             for(std::size_t i = 1; i < args.size(); i++) {
                 auto val = args[i]->evaluate(evalulator);
                 if(!val) return val;
-                result = std::max(result, val->value);
+                result = std::max(result, get_real(*val));
             }
-            return EValue{result, first->unit};
+            return UnitValue{result, get_unit(*first)};
         }
         case TokenType::BUILTIN_FUNC_GCD: {
             const auto &args = std::get<ASTCall>(ast->data).args;
             auto first = args[0]->evaluate(evalulator);
             if(!first) return first;
-            long long result = (long long)first->value;
+            long long result = (long long)get_real(*first);
             for(std::size_t i = 1; i < args.size(); i++) {
                 auto val = args[i]->evaluate(evalulator);
                 if(!val) return val;
-                result = std::gcd(result, (long long)val->value);
+                result = std::gcd(result, (long long)get_real(*val));
             }
-            return EValue{(long double)result};
+            return UnitValue{(long double)result};
         }
         case TokenType::BUILTIN_FUNC_LCM: {
             const auto &args = std::get<ASTCall>(ast->data).args;
             auto first = args[0]->evaluate(evalulator);
             if(!first) return first;
-            long long result = (long long)first->value;
+            long long result = (long long)get_real(*first);
             for(std::size_t i = 1; i < args.size(); i++) {
                 auto val = args[i]->evaluate(evalulator);
                 if(!val) return val;
-                result = std::lcm(result, (long long)val->value);
+                result = std::lcm(result, (long long)get_real(*val));
             }
-            return EValue{(long double)result};
+            return UnitValue{(long double)result};
         }
-        // sig(x) - significant figures
+        // sig(x) — returns the significant figures count of the evaluated variable
         case TokenType::BUILTIN_FUNC_SIG: {
             const auto &call = std::get<ASTCall>(ast->data);
             auto arg = call.args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            // For now, return the value with sig_figs from the argument
-            // Full sig-fig tracking would require propagation through all ops
-            return EValue{(long double)arg->sig_figs};
+            long double sf = 0.0L;
+            if (const auto* uv = std::get_if<UnitValue>(&*arg))
+                sf = (long double)uv->sig_figs;
+            else if (const auto* uvl = std::get_if<UnitValueList>(&*arg))
+                sf = uvl->elements.empty() ? 0.0L : (long double)uvl->elements[0].sig_figs;
+            return UnitValue{sf};
         }
         // Complex number builtins
         case TokenType::BUILTIN_FUNC_RE: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return EValue{arg->value, arg->unit};
+            return UnitValue{get_real(*arg), get_unit(*arg)};
         }
         case TokenType::BUILTIN_FUNC_IM: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            return EValue{arg->imag, arg->unit};
+            return UnitValue{get_imag(*arg), get_unit(*arg)};
         }
         case TokenType::BUILTIN_FUNC_CONJ: {
             auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
             if(!arg) return arg;
-            EValue result = *arg;
-            result.imag = -result.imag;
-            return result;
+            auto uv = as_uv(*arg);
+            uv.imag = -uv.imag;
+            return uv;
         }
         // Piecewise
         case TokenType::PIECEWISE_BEGIN: {
             const auto &call = std::get<ASTCall>(ast->data);
-            // args are pairs: [value0, cond0, value1, cond1, ...]
             for(std::size_t i = 0; i + 1 < call.args.size(); i += 2) {
                 auto cond = call.args[i + 1]->evaluate(evalulator);
                 if(!cond) return cond;
-                if(cond->value != 0.0) {
+                if(get_real(*cond) != 0.0) {
                     return call.args[i]->evaluate(evalulator);
                 }
             }
             return std::unexpected{"Piecewise: no matching condition"};
-        }
-        // Matrix literal
-        case TokenType::MATRIX_BEGIN: {
-            const auto &call = std::get<ASTCall>(ast->data);
-            int encoded = (int)ast->token.value.value;
-            int rows = encoded / 1000;
-            int cols = encoded % 1000;
-
-            std::vector<std::vector<long double>> matrix(rows, std::vector<long double>(cols));
-            std::size_t idx = 0;
-            for(int r = 0; r < rows; r++) {
-                for(int c = 0; c < cols; c++) {
-                    if(idx >= call.args.size()) {
-                        return std::unexpected{"Matrix: not enough elements"};
-                    }
-                    auto val = call.args[idx++]->evaluate(evalulator);
-                    if(!val) return val;
-                    matrix[r][c] = val->value;
-                }
-            }
-            EValue result;
-            result.value = matrix[0][0];
-            result.matrix = std::move(matrix);
-            return result;
-        }
-        // det(M)
-        case TokenType::BUILTIN_FUNC_DET: {
-            auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
-            if(!arg) return arg;
-            if(!arg->matrix) return std::unexpected{"\\det requires a matrix"};
-            auto &m = *arg->matrix;
-            std::size_t n = m.size();
-            if(n != m[0].size()) return std::unexpected{"\\det requires a square matrix"};
-            // Simple determinant via LU-like expansion for small matrices
-            if(n == 1) return EValue{m[0][0]};
-            if(n == 2) return EValue{m[0][0]*m[1][1] - m[0][1]*m[1][0]};
-            if(n == 3) {
-                return EValue{
-                    m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1]) -
-                    m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0]) +
-                    m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0])
-                };
-            }
-            // Cofactor expansion for larger matrices
-            long double det = 0;
-            for(std::size_t j = 0; j < n; j++) {
-                // Build submatrix
-                std::vector<std::vector<long double>> sub(n-1, std::vector<long double>(n-1));
-                for(std::size_t r = 1; r < n; r++) {
-                    std::size_t sc = 0;
-                    for(std::size_t c = 0; c < n; c++) {
-                        if(c == j) continue;
-                        sub[r-1][sc++] = m[r][c];
-                    }
-                }
-                // Recursively compute sub-determinant via the same method
-                // For simplicity, use a lambda
-                EValue sub_ev;
-                sub_ev.matrix = std::move(sub);
-                // We need to evaluate det of sub_ev - but we can't recurse through AST easily
-                // So implement inline Gaussian elimination
-                long double sign = (j % 2 == 0) ? 1.0 : -1.0;
-                // For now, support up to 4x4 via cofactor
-                if(n == 4) {
-                    auto &s = *sub_ev.matrix;
-                    long double sub_det =
-                        s[0][0]*(s[1][1]*s[2][2] - s[1][2]*s[2][1]) -
-                        s[0][1]*(s[1][0]*s[2][2] - s[1][2]*s[2][0]) +
-                        s[0][2]*(s[1][0]*s[2][1] - s[1][1]*s[2][0]);
-                    det += sign * m[0][j] * sub_det;
-                }
-            }
-            return EValue{det};
-        }
-        // trace(M)
-        case TokenType::BUILTIN_FUNC_TRACE: {
-            auto arg = std::get<ASTCall>(ast->data).args[0]->evaluate(evalulator);
-            if(!arg) return arg;
-            if(!arg->matrix) return std::unexpected{"\\operatorname{tr} requires a matrix"};
-            auto &m = *arg->matrix;
-            long double trace = 0;
-            for(std::size_t i = 0; i < std::min(m.size(), m[0].size()); i++) {
-                trace += m[i][i];
-            }
-            return EValue{trace};
         }
         case TokenType::FORMULA_QUERY:
             return std::unexpected<std::string>{"'?' can only be used as '? = (unit)' to search for formulas"};

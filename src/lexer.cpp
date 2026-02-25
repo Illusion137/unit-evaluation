@@ -68,9 +68,29 @@ dv::Token dv::Lexer::advance_with_token(const TokenType token_type, const std::u
     it += count;
     return {token_type, {it - count, count}};
 }
-dv::Token dv::Lexer::advance_with_token(const EValue token_value, const std::uint32_t count) noexcept {
+dv::Token dv::Lexer::advance_with_token(const UnitValue token_value, const std::uint32_t count) noexcept {
     it += count;
     return {token_value, {it - count, count}};
+}
+
+static int8_t count_sig_figs(std::string_view num_str) {
+    bool has_decimal = num_str.find('.') != std::string_view::npos;
+    if (!has_decimal) return 0; // integer literals are exact — no sig-fig reduction
+    // Find first significant digit (non-zero, non-decimal-point)
+    size_t first_sig = 0;
+    while (first_sig < num_str.size() && (num_str[first_sig] == '0' || num_str[first_sig] == '.'))
+        first_sig++;
+    if (first_sig == num_str.size()) return 1; // "0" or "0.0" = 1 sig fig
+    // Count digits from first_sig, track trailing zeros
+    int count = 0, trailing = 0;
+    for (size_t i = first_sig; i < num_str.size(); i++) {
+        if (num_str[i] == '.') { has_decimal = true; continue; }
+        if (!std::isdigit(num_str[i])) break;
+        if (num_str[i] == '0') trailing++;
+        else { count += trailing + 1; trailing = 0; }
+    }
+    if (has_decimal) count += trailing; // trailing zeros after decimal are significant
+    return static_cast<int8_t>(std::max(1, count));
 }
 
 dv::Token dv::Lexer::get_numeric_literal_token() noexcept{
@@ -89,7 +109,9 @@ dv::Token dv::Lexer::get_numeric_literal_token() noexcept{
         buffer[write++] = c;
         advance();
     }
-    return {std::atof(buffer.data()), {begit, it}};
+    dv::UnitValue uv{(long double)std::atof(buffer.data())};
+    uv.sig_figs = count_sig_figs(std::string_view{buffer.data(), (size_t)write});
+    return {uv, {begit, it}};
 }
 
 std::int32_t dv::Lexer::collect_subscript(char *buffer, std::size_t size, std::uint8_t &write) noexcept{
@@ -342,7 +364,7 @@ dv::Token dv::Lexer::get_special_indentifier_token() noexcept{
 // ban = bar.split('\n').map(a => a.trim()).filter(s => s).sort((a,b) => {
     // return a.split(',')[0].length - b.split(',')[0].length;
 // })
-#define UNIT_CASE(str, value, unit) case strint<str>(): return advance_with_token(dv::EValue{value, unit}, sizeof(str) - 1)
+#define UNIT_CASE(str, value, unit) case strint<str>(): return advance_with_token(dv::UnitValue{value, unit}, sizeof(str) - 1)
 #define UNIT_CASE_LIST_BEGIN(size) if(remaining_length() >= size) { switch(strint(it, size)) { default: break;
 #define UNIT_CASE_LIST_END(size) }}
 dv::Token dv::Lexer::get_unit_token() noexcept {
@@ -673,7 +695,7 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
                     else if(c >= 'A' && c <= 'F') hex_val += c - 'A' + 10;
                     advance();
                 }
-                return {EValue{(long double)hex_val}, {begit, it}};
+                return {UnitValue{(long double)hex_val}, {begit, it}};
             }
             // Binary literals: 0b...
             if(peek() == '0' && remaining_length() >= 2 && (peek_next() == 'b' || peek_next() == 'B')) {
@@ -684,7 +706,7 @@ dv::Token dv::Lexer::consume_next_token() noexcept{
                     bin_val = (bin_val << 1) | (peek() - '0');
                     advance();
                 }
-                return {EValue{(long double)bin_val}, {begit, it}};
+                return {UnitValue{(long double)bin_val}, {begit, it}};
             }
             if(isnumeric(peek())) return get_numeric_literal_token();
             if(std::isalpha(peek())) {

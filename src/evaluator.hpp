@@ -4,7 +4,6 @@
 #include "formula_finder.hpp"
 #include <map>
 #include <expected>
-#include <memory>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -16,17 +15,12 @@ namespace dv {
     struct Expression {
         std::string value_expr;
         std::string unit_expr;
+        std::string conversion_unit_expr;  // optional: converts result value to this unit
         std::string get_single_expression() const;
     };
     struct AssignExpression: public Expression {
         std::string identifier;
         AssignExpression(std::string _identifier, std::string _value_expr, std::string _unit_expr): Expression{_value_expr, _unit_expr}, identifier{_identifier} {}
-    };
-
-    struct CustomFunction {
-        std::string name;
-        std::vector<std::string> param_names;
-        std::unique_ptr<AST> body;
     };
 
     class Evaluator {
@@ -41,10 +35,12 @@ namespace dv {
         void insert_constant(const std::string name, const Expression &expression);
         std::vector<Physics::Formula> get_available_formulas(const dv::UnitVector &target) const noexcept;
 
+        bool use_sig_figs = false;
+
         std::unordered_map<std::string, EValue> fixed_constants;
         std::map<std::string, EValue> evaluated_variables;
         std::vector<Physics::Formula> last_formula_results;
-        std::unordered_map<std::string, CustomFunction> custom_functions;
+        std::unordered_map<std::string, dv::Function> custom_functions;
         std::map<std::string, std::string> variable_source_expressions;
     private:
         FormulaSearcher searcher;

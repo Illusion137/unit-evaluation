@@ -2,6 +2,7 @@
 #include "dimeval.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "ast.hpp"
 #include <expected>
 #include <format>
 #include <initializer_list>
@@ -71,7 +72,59 @@ std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_li
     for(const auto &expression : expression_list){
         parsed_expressions.emplace_back(parse_expression(expression));
     }
-    std::vector<MaybeEvaluated> evaluated(parsed_expressions.size(), 0.0);
+
+    // === Leaf detection for sig_figs display formatting ===
+    // An expression is a "display leaf" if:
+    //   1. It references at least one user-defined variable (excluding its own output)
+    //   2. Its assigned output (if any) is not referenced by any other expression
+    // Only display leaves apply sig-fig-aware scientific notation.
+
+    // Step A: extract assigned variable/function name for each expression
+    std::vector<std::string> assigned_vars(parsed_expressions.size());
+    for (size_t i = 0; i < parsed_expressions.size(); i++) {
+        if (!parsed_expressions[i]) continue;
+        const auto* root = parsed_expressions[i].value().ast.get();
+        if (root->token.type == TokenType::EQUAL) {
+            const auto* expr_data = std::get_if<dv::AST::ASTExpression>(&root->data);
+            if (expr_data && expr_data->lhs) {
+                auto t = expr_data->lhs->token.type;
+                if (t == TokenType::IDENTIFIER || t == TokenType::FUNC_CALL)
+                    assigned_vars[i] = std::string(expr_data->lhs->token.text);
+            }
+        }
+    }
+
+    // Step B: set of all user-defined names in this batch
+    std::unordered_set<std::string> user_defined_vars;
+    for (const auto& v : assigned_vars)
+        if (!v.empty()) user_defined_vars.insert(v);
+
+    // Step C: for each expression, is its output referenced by any OTHER expression?
+    auto is_depended_upon = [&](size_t i) -> bool {
+        if (assigned_vars[i].empty()) return false;
+        for (size_t j = 0; j < parsed_expressions.size(); j++) {
+            if (i == j || !parsed_expressions[j]) continue;
+            if (parsed_expressions[j].value().identifier_dependencies.count(assigned_vars[i]))
+                return true;
+        }
+        return false;
+    };
+
+    // Step D: is_display_leaf — has user deps (excl. self-assignment ref) and is not depended upon
+    auto is_display_leaf = [&](size_t i) -> bool {
+        if (!parsed_expressions[i]) return false;
+        const auto& deps = parsed_expressions[i].value().identifier_dependencies;
+        const auto& self_var = assigned_vars[i];
+        bool has_user_dep = false;
+        for (const auto& dep : deps) {
+            if (dep == self_var) continue;  // skip self (LHS parsed as IDENTIFIER)
+            if (user_defined_vars.count(dep)) { has_user_dep = true; break; }
+        }
+        if (!has_user_dep) return false;
+        return !is_depended_upon(i);
+    };
+
+    std::vector<MaybeEvaluated> evaluated(parsed_expressions.size(), EValue{UnitValue{0.0L}});
     std::vector<std::uint32_t> evaluation_indices(parsed_expressions.size());
     std::iota(evaluation_indices.begin(), evaluation_indices.end(), 0);
     // TODO sort this by dependencies
@@ -88,6 +141,33 @@ std::vector<dv::Evaluator::MaybeEvaluated> dv::Evaluator::evaluate_expression_li
         }
     }
 
+    // Apply conversion units: divide result value by conversion factor when units match
+    for (size_t i = 0; i < expression_list.size(); i++) {
+        if (expression_list[i].conversion_unit_expr.empty()) continue;
+        if (!evaluated[i]) continue;
+        auto conv = evaluate_expression(Expression{"1", expression_list[i].conversion_unit_expr});
+        if (!conv) continue;
+        const auto* conv_uv = std::get_if<UnitValue>(&*conv);
+        if (!conv_uv || conv_uv->value == 0.0L) continue;
+        auto* result_uv = std::get_if<UnitValue>(&*evaluated[i]);
+        if (!result_uv) continue;
+        if (result_uv->unit != conv_uv->unit) continue;
+        UnitValue converted{result_uv->value / conv_uv->value,
+                            result_uv->imag  / conv_uv->value,
+                            result_uv->unit};
+        converted.sig_figs = result_uv->sig_figs;
+        evaluated[i] = EValue{converted};
+    }
+
+    // Zero sig_figs for non-display-leaf expressions (suppress sig-fig formatting)
+    for (size_t i = 0; i < evaluated.size(); i++) {
+        if (!evaluated[i] || is_display_leaf(i)) continue;
+        if (auto* uv = std::get_if<UnitValue>(&evaluated[i].value()))
+            uv->sig_figs = 0;
+        else if (auto* uvl = std::get_if<UnitValueList>(&evaluated[i].value()))
+            for (auto& e : uvl->elements) e.sig_figs = 0;
+    }
+
     return evaluated;
 }
 
@@ -98,14 +178,18 @@ void dv::Evaluator::insert_constant(const std::string name, const Expression &ex
     auto value_result = parsed_expression.value().ast->evaluate(*this);
     auto unit_result = parsed_unit_expression.value().ast->evaluate(*this);
     if(!value_result || !unit_result) return;
-    EValue value = {value_result->value, unit_result->unit};
+    const UnitValue* vr = std::get_if<UnitValue>(&*value_result);
+    const UnitValue* ur = std::get_if<UnitValue>(&*unit_result);
+    if(!vr || !ur) return;
+    EValue value = UnitValue{vr->value, ur->unit};
     fixed_constants.insert_or_assign(name, std::move(value));
 }
 
 std::vector<Physics::Formula> dv::Evaluator::get_available_formulas(const dv::UnitVector &target) const noexcept {
     std::vector<dv::UnitVector> available_units;
     for(const auto &[key, value]: this->evaluated_variables) {
-        available_units.push_back(value.unit);
+        if(const auto* uv = std::get_if<UnitValue>(&value))
+            available_units.push_back(uv->unit);
     }
     return searcher.find_by_units(available_units, target);
 }

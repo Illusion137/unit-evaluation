@@ -14,6 +14,13 @@ struct LatexMultiTest {
     double expected_result; // expected result of last expression
 };
 
+static inline long double get_scalar_val(const dv::EValue &ev) {
+    if (auto p = std::get_if<dv::UnitValue>(&ev)) return p->value;
+    if (auto p = std::get_if<dv::UnitValueList>(&ev)) return p->elements.empty() ? 0.0L : p->elements[0].value;
+    if (auto p = std::get_if<dv::BooleanValue>(&ev)) return p->value ? 1.0L : 0.0L;
+    return 0.0L;
+}
+
 static inline void print_tokens_red(const std::string view){
     dv::Lexer lexer{view};
     const auto &tokens = lexer.extract_all_tokens();
@@ -52,9 +59,9 @@ static inline bool run_non_related_tests(const std::span<const LatexTest> tests)
             std::println("\033[31m[FAIL] {} = ERROR({}) ✗\033[0m", single_expression_list[0].get_single_expression(), value.error());
             continue;
         }
-        if(std::fabs(value.value().value - test.expected_result) > epsilon){
+        if(std::fabs((double)get_scalar_val(value.value()) - test.expected_result) > epsilon){
             success = false;
-            std::println("\033[31m[FAIL] {} = {} : Expected {} ✗\033[0m", single_expression_list[0].get_single_expression(), value.value().value, test.expected_result);
+            std::println("\033[31m[FAIL] {} = {} : Expected {} ✗\033[0m", single_expression_list[0].get_single_expression(), (double)get_scalar_val(value.value()), test.expected_result);
             print_ast_red(single_expression_list[0].get_single_expression());
             continue;
         }
@@ -97,9 +104,9 @@ static inline bool run_multi_tests(const std::span<const LatexMultiTest> tests){
             std::println("\033[31m[FAIL] {} = ERROR({}) ✗\033[0m", desc, value.error());
             continue;
         }
-        if(std::fabs(value.value().value - test.expected_result) > epsilon){
+        if(std::fabs((double)get_scalar_val(value.value()) - test.expected_result) > epsilon){
             success = false;
-            std::println("\033[31m[FAIL] {} = {} : Expected {} ✗\033[0m", desc, value.value().value, test.expected_result);
+            std::println("\033[31m[FAIL] {} = {} : Expected {} ✗\033[0m", desc, (double)get_scalar_val(value.value()), test.expected_result);
             continue;
         }
         else {

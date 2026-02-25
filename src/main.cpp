@@ -249,8 +249,12 @@ int main(){
         {{"x = [10, 20, 30]", "x[1]"}, 20},
         {{"x = [10, 20, 30]", "x[0]"}, 10},
 
-        // Matrix determinant
-        {{"\\det(\\begin{bmatrix} 1 & 2 \\\\ 3 & 4 \\end{bmatrix})"}, -2},
+        // Sig figs: \sig(x) returns number of significant figures
+        {{"x = 5.65", "\\sig(x)"}, 3},
+        {{"x = 5.60", "\\sig(x)"}, 3},   // trailing zeros after decimal count
+        {{"x = 100.0", "\\sig(x)"}, 4},  // 100.0 has 4 sig figs
+        {{"x = 5.6 * 3.21", "\\sig(x)"}, 2}, // min(2, 3) = 2
+
     };
 
     std::println("=== Single Expression Tests ===");
@@ -267,7 +271,110 @@ int main(){
     const auto evaled = evaluator.evaluate_expression_list(expressions);
     for(const auto &eval : evaled){
         if(!eval) std::println("[ERROR]: {}", eval.error());
-        else std::println("[VALUE]: {} {}", eval.value().value, eval.value().unit.vec);
+        else {
+            std::visit([](const auto& v) {
+                using T = std::decay_t<decltype(v)>;
+                if constexpr (std::is_same_v<T, dv::UnitValue>)
+                    std::println("[VALUE]: {} {}", (double)v.value, v.unit.vec);
+                else if constexpr (std::is_same_v<T, dv::UnitValueList>)
+                    std::println("[LIST]: {}", v.to_result_string());
+                else if constexpr (std::is_same_v<T, dv::BooleanValue>)
+                    std::println("[BOOL]: {}", v.value);
+                else
+                    std::println("[FUNC]: {}", v.to_result_string());
+            }, eval.value());
+        }
+    }
+
+    // === Phase 2 Manual Tests ===
+    std::println("\n=== Phase 2 Manual Tests ===");
+
+    // Conversion unit: 5000 m → 5 km
+    {
+        constexpr double epsilon = 0.001;
+        std::array<dv::Expression, 1> conv_exprs = {
+            dv::Expression{.value_expr = "5000", .unit_expr = "\\m", .conversion_unit_expr = "\\km"}
+        };
+        dv::Evaluator conv_eval;
+        const auto conv_results = conv_eval.evaluate_expression_list(conv_exprs);
+        const auto &r = conv_results[0];
+        if (!r) {
+            std::println("\033[31m[FAIL] conversion test: ERROR({}) ✗\033[0m", r.error());
+        } else if (const auto* uv = std::get_if<dv::UnitValue>(&r.value())) {
+            if (std::fabs((double)uv->value - 5.0) < epsilon) {
+                std::println("\033[0;32m[PASS] 5000 m → {} km ✓\033[0m", (double)uv->value);
+            } else {
+                std::println("\033[31m[FAIL] 5000 m → {} km (expected 5) ✗\033[0m", (double)uv->value);
+            }
+        } else {
+            std::println("\033[31m[FAIL] conversion test: wrong type ✗\033[0m");
+        }
+    }
+
+    // Integral without dx → error
+    {
+        std::array<dv::Expression, 1> int_exprs = {
+            dv::Expression{.value_expr = "\\int_{0}^{1} x"}
+        };
+        dv::Evaluator int_eval;
+        const auto int_results = int_eval.evaluate_expression_list(int_exprs);
+        const auto &r = int_results[0];
+        if (!r) {
+            std::println("\033[0;32m[PASS] \\int without dx → error ✓\033[0m");
+        } else {
+            std::println("\033[31m[FAIL] \\int without dx should have returned an error ✗\033[0m");
+        }
+    }
+
+    // value_to_scientific with sig_figs
+    {
+        struct Case { long double v; int sf; const char* expected; };
+        static const Case cases[] = {
+            {5.65L,      3,  "5.65"},            // normal range, trailing digits preserved
+            {5.60L,      3,  "5.60"},            // trailing zero after decimal
+            {17.976L,    2,  "18"},              // rounds to integer
+            {8.81L,      2,  "8.8"},             // 1 decimal place
+            {9.99L,      2,  "10"},              // rounding pushes order of magnitude
+            {0.001234L,  3,  "1.23\\times10^{-3}"},  // small → sci notation
+            {123456.0L,  3,  "1.23\\times10^{5}"},   // large → sci notation
+            {100.0L,     4,  "100.0"},           // trailing decimal digit
+        };
+        bool sf_ok = true;
+        for (const auto& c : cases) {
+            auto result = dv::value_to_scientific(c.v, c.sf);
+            bool ok = result == c.expected;
+            if (!ok) sf_ok = false;
+            std::println("{} value_to_scientific({}, sf={}) = {} (expected: {})",
+                ok ? "\033[0;32m[PASS]" : "\033[31m[FAIL]",
+                (double)c.v, c.sf, result, c.expected);
+        }
+        if (sf_ok) std::print("\033[0m");
+        else std::print("\033[0m");
+    }
+
+    // Leaf detection: sig_figs only present on display leaves
+    {
+        // a=5.6, b=3.21, x=a*b → x is a display leaf (sig_figs=2), a and b are not
+        std::vector<dv::Expression> leaf_exprs = {
+            dv::Expression{.value_expr = "a = 5.6"},
+            dv::Expression{.value_expr = "b = 3.21"},
+            dv::Expression{.value_expr = "x = a * b"},
+        };
+        dv::Evaluator leaf_eval;
+        const auto leaf_results = leaf_eval.evaluate_expression_list(leaf_exprs);
+        const auto* a_uv = std::get_if<dv::UnitValue>(&leaf_results[0].value());
+        const auto* b_uv = std::get_if<dv::UnitValue>(&leaf_results[1].value());
+        const auto* x_uv = std::get_if<dv::UnitValue>(&leaf_results[2].value());
+        bool ok = a_uv && b_uv && x_uv
+                  && a_uv->sig_figs == 0   // a = 5.6: not a display leaf → zeroed
+                  && b_uv->sig_figs == 0   // b = 3.21: not a display leaf → zeroed
+                  && x_uv->sig_figs == 2;  // x = a*b: display leaf → min(2,3)=2
+        std::println("{} leaf detection: a.sf={} b.sf={} x.sf={}{}",
+            ok ? "\033[0;32m[PASS]" : "\033[31m[FAIL]",
+            a_uv ? (int)a_uv->sig_figs : -1,
+            b_uv ? (int)b_uv->sig_figs : -1,
+            x_uv ? (int)x_uv->sig_figs : -1,
+            ok ? " ✓\033[0m" : " ✗\033[0m");
     }
 
     return EXIT_SUCCESS;

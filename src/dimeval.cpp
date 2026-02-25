@@ -1,20 +1,31 @@
 #include "dimeval.hpp"
+#include <algorithm>
 #include <cmath>
 
+static int8_t combine_sig_figs(int8_t a, int8_t b) {
+    if (a == 0) return b;
+    if (b == 0) return a;
+    return std::min(a, b);
+}
+
+// ============================================================================
+// UnitVector
+// ============================================================================
+
 bool dv::UnitVector::operator==(const UnitVector &rhs) const noexcept {
-    return this->vec == rhs;
+    return this->vec == rhs.vec;
 }
 bool dv::UnitVector::operator==(const UnitVec &rhs) const noexcept {
     return this->vec == rhs;
 }
 dv::UnitVector dv::UnitVector::operator+(const UnitVector &rhs) const noexcept {
     UnitVector temp_vec = *this;
-    if(temp_vec != rhs) temp_vec.vec.fill(0);
+    if (temp_vec != rhs) temp_vec.vec.fill(0);
     return temp_vec;
 }
 dv::UnitVector dv::UnitVector::operator-(const UnitVector &rhs) const noexcept {
     UnitVector temp_vec = *this;
-    if(temp_vec != rhs) temp_vec.vec.fill(0);
+    if (temp_vec != rhs) temp_vec.vec.fill(0);
     return temp_vec;
 }
 dv::UnitVector dv::UnitVector::operator*(const UnitVector &rhs) const noexcept {
@@ -29,7 +40,7 @@ dv::UnitVector dv::UnitVector::operator/(const UnitVector &rhs) const noexcept {
 }
 dv::UnitVector dv::UnitVector::operator^(const UnitVector &rhs) const noexcept {
     UnitVector temp_vec;
-    if(rhs == DIMENSIONLESS_VEC) {
+    if (rhs == DIMENSIONLESS_VEC) {
         temp_vec.vec.fill(0);
         return temp_vec;
     }
@@ -38,109 +49,345 @@ dv::UnitVector dv::UnitVector::operator^(const UnitVector &rhs) const noexcept {
 }
 dv::UnitVector dv::UnitVector::operator^(const double value) const noexcept {
     UnitVector temp_vec;
-    temp_vec.vec.fill(0);
-    for (uint32_t i = 0; i < vec.size(); i++) temp_vec.vec[i] = this->vec[i] * value;
+    for (uint32_t i = 0; i < vec.size(); i++) temp_vec.vec[i] = (int8_t)(this->vec[i] * value);
     return temp_vec;
 }
 
-// Helper: apply a scalar binary op element-wise across two EValues
-static dv::EValue apply_elementwise(const dv::EValue &lhs, const dv::EValue &rhs,
-    long double (*op)(long double, long double), dv::UnitVector result_unit) {
-    dv::EValue result;
-    result.unit = result_unit;
-    if(lhs.is_scalar() && rhs.is_scalar()) {
-        result.value = op(lhs.value, rhs.value);
-        return result;
-    }
-    std::size_t sz = lhs.is_scalar() ? rhs.size() : (rhs.is_scalar() ? lhs.size() : std::min(lhs.size(), rhs.size()));
-    result.extra_values.resize(sz);
-    for(std::size_t i = 0; i < sz; i++) {
-        result.extra_values[i] = op(lhs.at(i), rhs.at(i));
-    }
-    result.value = result.extra_values[0];
-    return result;
-}
+// ============================================================================
+// UnitValue
+// ============================================================================
 
-dv::EValue dv::EValue::operator+() const noexcept {
+dv::UnitValue dv::UnitValue::operator+() const noexcept {
     return *this;
 }
-dv::EValue dv::EValue::operator+(const EValue &rhs) const noexcept {
+dv::UnitValue dv::UnitValue::operator+(const UnitValue &rhs) const noexcept {
     auto unit_result = this->unit + rhs.unit;
-    return apply_elementwise(*this, rhs, [](long double a, long double b){ return a + b; }, unit_result);
-}
-dv::EValue dv::EValue::operator-() const noexcept {
-    EValue result = *this;
-    result.value = -result.value;
-    for(auto &v : result.extra_values) v = -v;
+    UnitValue result;
+    if (is_complex() || rhs.is_complex()) {
+        result = {this->value + rhs.value, this->imag + rhs.imag, unit_result};
+    } else {
+        result = {this->value + rhs.value, unit_result};
+    }
+    result.sig_figs = combine_sig_figs(this->sig_figs, rhs.sig_figs);
     return result;
 }
-dv::EValue dv::EValue::operator-(const EValue &rhs) const noexcept {
+dv::UnitValue dv::UnitValue::operator-() const noexcept {
+    UnitValue result{-this->value, -this->imag, this->unit};
+    result.sig_figs = this->sig_figs;
+    return result;
+}
+dv::UnitValue dv::UnitValue::operator-(const UnitValue &rhs) const noexcept {
     auto unit_result = this->unit - rhs.unit;
-    return apply_elementwise(*this, rhs, [](long double a, long double b){ return a - b; }, unit_result);
+    UnitValue result;
+    if (is_complex() || rhs.is_complex()) {
+        result = {this->value - rhs.value, this->imag - rhs.imag, unit_result};
+    } else {
+        result = {this->value - rhs.value, unit_result};
+    }
+    result.sig_figs = combine_sig_figs(this->sig_figs, rhs.sig_figs);
+    return result;
 }
-dv::EValue dv::EValue::operator*(const EValue &rhs) const noexcept {
+dv::UnitValue dv::UnitValue::operator*(const UnitValue &rhs) const noexcept {
     auto unit_result = this->unit * rhs.unit;
-    if(this->is_scalar() && rhs.is_scalar()) {
-        // Complex multiplication
-        if(this->is_complex() || rhs.is_complex()) {
-            EValue r;
-            r.value = this->value * rhs.value - this->imag * rhs.imag;
-            r.imag = this->value * rhs.imag + this->imag * rhs.value;
-            r.unit = unit_result;
-            return r;
-        }
+    UnitValue result;
+    if (is_complex() || rhs.is_complex()) {
+        long double r = this->value * rhs.value - this->imag * rhs.imag;
+        long double i = this->value * rhs.imag + this->imag * rhs.value;
+        result = {r, i, unit_result};
+    } else {
+        result = {this->value * rhs.value, unit_result};
     }
-    return apply_elementwise(*this, rhs, [](long double a, long double b){ return a * b; }, unit_result);
+    result.sig_figs = combine_sig_figs(this->sig_figs, rhs.sig_figs);
+    return result;
 }
-dv::EValue dv::EValue::operator/(const EValue &rhs) const noexcept {
+dv::UnitValue dv::UnitValue::operator/(const UnitValue &rhs) const noexcept {
     auto unit_result = this->unit / rhs.unit;
-    if(this->is_scalar() && rhs.is_scalar()) {
-        // Complex division
-        if(this->is_complex() || rhs.is_complex()) {
-            long double denom = rhs.value * rhs.value + rhs.imag * rhs.imag;
-            EValue r;
-            r.value = (this->value * rhs.value + this->imag * rhs.imag) / denom;
-            r.imag = (this->imag * rhs.value - this->value * rhs.imag) / denom;
-            r.unit = unit_result;
-            return r;
-        }
+    UnitValue result;
+    if (is_complex() || rhs.is_complex()) {
+        long double denom = rhs.value * rhs.value + rhs.imag * rhs.imag;
+        long double r = (this->value * rhs.value + this->imag * rhs.imag) / denom;
+        long double i = (this->imag * rhs.value - this->value * rhs.imag) / denom;
+        result = {r, i, unit_result};
+    } else {
+        result = {this->value / rhs.value, unit_result};
     }
-    return apply_elementwise(*this, rhs, [](long double a, long double b){ return a / b; }, unit_result);
-}
-dv::EValue dv::EValue::operator^(const EValue &rhs) const noexcept {
-    auto compute_unit = [&]() -> UnitVector {
-        if(rhs.unit == DIMENSIONLESS_VEC) return this->unit ^ rhs.value;
-        return this->unit ^ rhs.unit;
-    };
-    auto unit_result = compute_unit();
-    return apply_elementwise(*this, rhs, [](long double a, long double b){ return std::pow(a, b); }, unit_result);
-}
-dv::EValue dv::EValue::fact() const noexcept {
-    if(is_scalar()) {
-        long double f = 1;
-        for(uint32_t i = 2; i <= (uint64_t)this->value; i++) f *= i;
-        return { f, { 0 } };
-    }
-    EValue result;
-    result.unit = UnitVector{DIMENSIONLESS_VEC};
-    result.extra_values.resize(size());
-    for(std::size_t j = 0; j < size(); j++) {
-        long double f = 1;
-        for(uint32_t i = 2; i <= (uint64_t)at(j); i++) f *= i;
-        result.extra_values[j] = f;
-    }
-    result.value = result.extra_values[0];
+    result.sig_figs = combine_sig_figs(this->sig_figs, rhs.sig_figs);
     return result;
 }
-dv::EValue dv::EValue::abs() const noexcept {
-    if(is_complex()) {
-        return { std::sqrt(value * value + imag * imag), this->unit };
+dv::UnitValue dv::UnitValue::operator^(const UnitValue &rhs) const noexcept {
+    auto unit_result = (rhs.unit == DIMENSIONLESS_VEC)
+        ? (this->unit ^ rhs.value)
+        : (this->unit ^ rhs.unit);
+    UnitValue result;
+    if (is_complex() || rhs.is_complex()) {
+        // z^w using polar form: z = r*e^(i*theta), w = w_r + i*w_i
+        // z^w = exp(w * ln(z)) = exp((w_r + i*w_i)*(ln(r) + i*theta))
+        double r = std::hypot((double)this->value, (double)this->imag);
+        double theta = std::atan2((double)this->imag, (double)this->value);
+        double w_r = (double)rhs.value, w_i = (double)rhs.imag;
+        double ln_r = std::log(r);
+        double real_exp = w_r * ln_r - w_i * theta;
+        double imag_exp = w_r * theta + w_i * ln_r;
+        double mag = std::exp(real_exp);
+        result = {(long double)(mag * std::cos(imag_exp)),
+                  (long double)(mag * std::sin(imag_exp)),
+                  unit_result};
+    } else {
+        result = {(long double)std::pow((double)this->value, (double)rhs.value), unit_result};
     }
-    if(is_scalar()) return { std::fabs(this->value), this->unit };
-    EValue result;
-    result.unit = this->unit;
-    result.extra_values.resize(size());
-    for(std::size_t i = 0; i < size(); i++) result.extra_values[i] = std::fabs(at(i));
-    result.value = result.extra_values[0];
+    result.sig_figs = combine_sig_figs(this->sig_figs, rhs.sig_figs);
     return result;
 }
+dv::UnitValue dv::UnitValue::fact() const noexcept {
+    long double f = 1;
+    for (uint32_t i = 2; i <= (uint64_t)this->value; i++) f *= i;
+    return {f, UnitVector{DIMENSIONLESS_VEC}};
+}
+dv::UnitValue dv::UnitValue::abs() const noexcept {
+    if (is_complex()) {
+        return {(long double)std::hypot((double)value, (double)imag), this->unit};
+    }
+    return {(long double)std::fabs((double)this->value), this->unit};
+}
+std::string dv::UnitValue::to_result_string() const noexcept {
+    if (is_complex()) {
+        return std::to_string((double)value) + " + " + std::to_string((double)imag) + "i";
+    }
+    return std::to_string((double)value);
+}
+
+// ============================================================================
+// UnitValueList
+// ============================================================================
+
+dv::UnitValueList dv::UnitValueList::operator+(const UnitValue &scalar) const noexcept {
+    UnitValueList result;
+    result.elements.reserve(elements.size());
+    for (const auto &e : elements) result.elements.push_back(e + scalar);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator-(const UnitValue &scalar) const noexcept {
+    UnitValueList result;
+    result.elements.reserve(elements.size());
+    for (const auto &e : elements) result.elements.push_back(e - scalar);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator*(const UnitValue &scalar) const noexcept {
+    UnitValueList result;
+    result.elements.reserve(elements.size());
+    for (const auto &e : elements) result.elements.push_back(e * scalar);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator/(const UnitValue &scalar) const noexcept {
+    UnitValueList result;
+    result.elements.reserve(elements.size());
+    for (const auto &e : elements) result.elements.push_back(e / scalar);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator+(const UnitValueList &rhs) const noexcept {
+    UnitValueList result;
+    std::size_t n = std::min(elements.size(), rhs.elements.size());
+    result.elements.reserve(n);
+    for (std::size_t i = 0; i < n; i++) result.elements.push_back(elements[i] + rhs.elements[i]);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator-(const UnitValueList &rhs) const noexcept {
+    UnitValueList result;
+    std::size_t n = std::min(elements.size(), rhs.elements.size());
+    result.elements.reserve(n);
+    for (std::size_t i = 0; i < n; i++) result.elements.push_back(elements[i] - rhs.elements[i]);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator*(const UnitValueList &rhs) const noexcept {
+    UnitValueList result;
+    std::size_t n = std::min(elements.size(), rhs.elements.size());
+    result.elements.reserve(n);
+    for (std::size_t i = 0; i < n; i++) result.elements.push_back(elements[i] * rhs.elements[i]);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator/(const UnitValueList &rhs) const noexcept {
+    UnitValueList result;
+    std::size_t n = std::min(elements.size(), rhs.elements.size());
+    result.elements.reserve(n);
+    for (std::size_t i = 0; i < n; i++) result.elements.push_back(elements[i] / rhs.elements[i]);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::operator-() const noexcept {
+    UnitValueList result;
+    result.elements.reserve(elements.size());
+    for (const auto &e : elements) result.elements.push_back(-e);
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::abs() const noexcept {
+    UnitValueList result;
+    result.elements.reserve(elements.size());
+    for (const auto &e : elements) result.elements.push_back(e.abs());
+    return result;
+}
+dv::UnitValueList dv::UnitValueList::fact() const noexcept {
+    UnitValueList result;
+    result.elements.reserve(elements.size());
+    for (const auto &e : elements) result.elements.push_back(e.fact());
+    return result;
+}
+std::string dv::UnitValueList::to_result_string() const noexcept {
+    std::string s = "[";
+    for (std::size_t i = 0; i < elements.size(); i++) {
+        if (i > 0) s += ", ";
+        s += elements[i].to_result_string();
+    }
+    return s + "]";
+}
+
+// ============================================================================
+// BooleanValue / Function
+// ============================================================================
+
+std::string dv::BooleanValue::to_result_string() const noexcept {
+    return value ? "true" : "false";
+}
+std::string dv::Function::to_result_string() const noexcept {
+    std::string s = name + "(";
+    for (std::size_t i = 0; i < param_names.size(); i++) {
+        if (i > 0) s += ", ";
+        s += param_names[i];
+    }
+    return s + ")";
+}
+
+// ============================================================================
+// Free EValue operators (std::visit dispatch)
+// ============================================================================
+
+namespace dv {
+
+EValue operator+(const EValue &lhs, const EValue &rhs) noexcept {
+    return std::visit([](const auto &l, const auto &r) -> EValue {
+        using L = std::decay_t<decltype(l)>;
+        using R = std::decay_t<decltype(r)>;
+        if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValue>)
+            return l + r;
+        else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValue>)
+            return l + r;
+        else if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValueList>)
+            return r + l;
+        else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValueList>)
+            return l + r;
+        else
+            return UnitValue{0.0L};
+    }, lhs, rhs);
+}
+
+EValue operator-(const EValue &lhs, const EValue &rhs) noexcept {
+    return std::visit([](const auto &l, const auto &r) -> EValue {
+        using L = std::decay_t<decltype(l)>;
+        using R = std::decay_t<decltype(r)>;
+        if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValue>)
+            return l - r;
+        else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValue>)
+            return l - r;
+        else if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValueList>) {
+            // scalar - list: negate list then add scalar
+            UnitValueList result;
+            result.elements.reserve(r.elements.size());
+            for (const auto &e : r.elements) result.elements.push_back(l - e);
+            return result;
+        } else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValueList>)
+            return l - r;
+        else
+            return UnitValue{0.0L};
+    }, lhs, rhs);
+}
+
+EValue operator*(const EValue &lhs, const EValue &rhs) noexcept {
+    return std::visit([](const auto &l, const auto &r) -> EValue {
+        using L = std::decay_t<decltype(l)>;
+        using R = std::decay_t<decltype(r)>;
+        if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValue>)
+            return l * r;
+        else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValue>)
+            return l * r;
+        else if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValueList>)
+            return r * l;
+        else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValueList>)
+            return l * r;
+        else
+            return UnitValue{0.0L};
+    }, lhs, rhs);
+}
+
+EValue operator/(const EValue &lhs, const EValue &rhs) noexcept {
+    return std::visit([](const auto &l, const auto &r) -> EValue {
+        using L = std::decay_t<decltype(l)>;
+        using R = std::decay_t<decltype(r)>;
+        if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValue>)
+            return l / r;
+        else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValue>)
+            return l / r;
+        else if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValueList>) {
+            UnitValueList result;
+            result.elements.reserve(r.elements.size());
+            for (const auto &e : r.elements) result.elements.push_back(l / e);
+            return result;
+        } else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValueList>)
+            return l / r;
+        else
+            return UnitValue{0.0L};
+    }, lhs, rhs);
+}
+
+EValue operator^(const EValue &lhs, const EValue &rhs) noexcept {
+    return std::visit([](const auto &l, const auto &r) -> EValue {
+        using L = std::decay_t<decltype(l)>;
+        using R = std::decay_t<decltype(r)>;
+        if constexpr (std::is_same_v<L, UnitValue> && std::is_same_v<R, UnitValue>)
+            return l ^ r;
+        else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValue>) {
+            UnitValueList result;
+            result.elements.reserve(l.elements.size());
+            for (const auto &e : l.elements) result.elements.push_back(e ^ r);
+            return result;
+        } else if constexpr (std::is_same_v<L, UnitValueList> && std::is_same_v<R, UnitValueList>) {
+            UnitValueList result;
+            std::size_t n = std::min(l.elements.size(), r.elements.size());
+            result.elements.reserve(n);
+            for (std::size_t i = 0; i < n; i++) result.elements.push_back(l.elements[i] ^ r.elements[i]);
+            return result;
+        } else
+            return UnitValue{0.0L};
+    }, lhs, rhs);
+}
+
+EValue operator-(const EValue &ev) noexcept {
+    return std::visit([](const auto &v) -> EValue {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, UnitValue>) return -v;
+        else if constexpr (std::is_same_v<T, UnitValueList>) return -v;
+        else return UnitValue{0.0L};
+    }, ev);
+}
+
+EValue operator+(const EValue &ev) noexcept {
+    return ev;
+}
+
+EValue evalue_fact(const EValue &ev) noexcept {
+    return std::visit([](const auto &v) -> EValue {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, UnitValue>) return v.fact();
+        else if constexpr (std::is_same_v<T, UnitValueList>) return v.fact();
+        else return UnitValue{0.0L};
+    }, ev);
+}
+
+EValue evalue_abs(const EValue &ev) noexcept {
+    return std::visit([](const auto &v) -> EValue {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, UnitValue>) return v.abs();
+        else if constexpr (std::is_same_v<T, UnitValueList>) return v.abs();
+        else if constexpr (std::is_same_v<T, BooleanValue>) return UnitValue{v.value ? 1.0L : 0.0L};
+        else return UnitValue{0.0L};
+    }, ev);
+}
+
+} // namespace dv

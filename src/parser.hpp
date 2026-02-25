@@ -12,7 +12,7 @@ namespace dv {
     using MaybeAST = std::expected<std::unique_ptr<AST>, std::string>;
     struct ASTDependencies {
         std::unique_ptr<AST> ast;
-        const std::unordered_set<std::string> &identifier_dependencies;
+        std::unordered_set<std::string> identifier_dependencies;  // owned copy
     };
     using MaybeASTDependencies = std::expected<ASTDependencies, std::string>;
 
@@ -24,7 +24,7 @@ namespace dv {
             if(!maybe_ast) return std::unexpected{maybe_ast.error()};
             return ASTDependencies{
                 std::move(maybe_ast.value()),
-                this->identifier_dependencies
+                this->identifier_dependencies  // copied by value into the struct
             };
         }
     private:

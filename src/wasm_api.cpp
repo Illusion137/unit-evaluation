@@ -18,13 +18,13 @@ static Evaluator* g_eval = nullptr;
 struct JsResult {
     double value;
     double imag;
-    int sig_figs;
     std::vector<int> unit;          // 7 int8_t values as ints (Embind handles int8_t poorly)
     bool success;
     std::string error;
     std::string unit_latex;
     std::string value_scientific;
     std::vector<double> extra_values;
+    int sig_figs;                   // 0 = unlimited; >0 = significant figures count
 };
 
 struct JsFormulaVariable {
@@ -49,27 +49,48 @@ static JsResult make_error_result(const std::string& msg) {
     JsResult r{};
     r.success = false;
     r.error = msg;
-    r.sig_figs = -1;
     r.unit = std::vector<int>(7, 0);
     return r;
 }
 
 static JsResult evalue_to_js_result(const EValue& ev) {
     JsResult r;
-    r.value = ev.value;
-    r.imag = ev.imag;
-    r.sig_figs = ev.sig_figs;
     r.success = true;
+    r.sig_figs = 0;
+    r.unit.resize(7, 0);
 
-    r.unit.resize(7);
-    for (int i = 0; i < 7; i++)
-        r.unit[i] = ev.unit.vec[i];
+    std::visit([&r](const auto& v) {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, dv::UnitValue>) {
+            r.value = (double)v.value;
+            r.imag  = (double)v.imag;
+            r.sig_figs = (int)v.sig_figs;
+            for (int i = 0; i < 7; i++) r.unit[i] = v.unit.vec[i];
+            r.unit_latex = (v.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC})
+                ? "" : unit_to_latex(v.unit);
+            r.value_scientific = value_to_scientific(v.value, (int)v.sig_figs);
+        } else if constexpr (std::is_same_v<T, dv::UnitValueList>) {
+            if (!v.elements.empty()) {
+                r.value = (double)v.elements[0].value;
+                r.imag  = (double)v.elements[0].imag;
+                r.sig_figs = (int)v.elements[0].sig_figs;
+                for (int i = 0; i < 7; i++) r.unit[i] = v.elements[0].unit.vec[i];
+                r.unit_latex = (v.elements[0].unit == dv::UnitVector{dv::DIMENSIONLESS_VEC})
+                    ? "" : unit_to_latex(v.elements[0].unit);
+                r.value_scientific = value_to_scientific(v.elements[0].value, (int)v.elements[0].sig_figs);
+            }
+            r.extra_values.reserve(v.elements.size());
+            for (const auto& e : v.elements) r.extra_values.push_back((double)e.value);
+        } else if constexpr (std::is_same_v<T, dv::BooleanValue>) {
+            r.value = v.value ? 1.0 : 0.0;
+            r.value_scientific = std::to_string((int)r.value);
+        } else {
+            // Function — stored successfully; report as success with a display hint
+            r.success = true;
+            r.error = "function";
+        }
+    }, ev);
 
-    r.extra_values = std::vector<double>(ev.extra_values.begin(), ev.extra_values.end());
-
-    r.unit_latex = (ev.unit == dv::UnitVector{dv::DIMENSIONLESS_VEC})
-        ? "" : unit_to_latex(ev.unit);
-    r.value_scientific = value_to_scientific(ev.value);
     return r;
 }
 
@@ -148,25 +169,34 @@ JsResult dv_eval(const std::string& value_expr, const std::string& unit_expr) {
 }
 
 std::vector<JsResult> dv_eval_batch(const std::vector<std::string>& value_exprs,
-                                     const std::vector<std::string>& unit_exprs) {
+                                     const std::vector<std::string>& unit_exprs,
+                                     const std::vector<std::string>& conversion_unit_exprs) {
     if (!g_eval) return {};
 
     std::vector<Expression> exprs;
     exprs.reserve(value_exprs.size());
     for (size_t i = 0; i < value_exprs.size(); i++) {
         std::string unit = (i < unit_exprs.size()) ? unit_exprs[i] : "";
-        exprs.push_back(Expression{value_exprs[i], unit});
+        std::string conv = (i < conversion_unit_exprs.size()) ? conversion_unit_exprs[i] : "";
+        exprs.push_back(Expression{value_exprs[i], unit, conv});
     }
 
     auto results = g_eval->evaluate_expression_list(exprs);
 
     std::vector<JsResult> out;
     out.reserve(results.size());
-    for (const auto& r : results) {
-        if (r)
-            out.push_back(evalue_to_js_result(r.value()));
-        else
+    for (size_t i = 0; i < results.size(); i++) {
+        const auto& r = results[i];
+        if (r) {
+            JsResult jr = evalue_to_js_result(r.value());
+            // Override unit_latex with the conversion unit string if conversion was applied
+            if (i < conversion_unit_exprs.size() && !conversion_unit_exprs[i].empty() && jr.success) {
+                jr.unit_latex = conversion_unit_exprs[i];
+            }
+            out.push_back(std::move(jr));
+        } else {
             out.push_back(make_error_result(r.error()));
+        }
     }
     return out;
 }
@@ -208,7 +238,9 @@ val dv_get_variable(const std::string& name) {
     if (!g_eval) return val::null();
     auto it = g_eval->evaluated_variables.find(name);
     if (it == g_eval->evaluated_variables.end()) return val::null();
-    return val(it->second.value);
+    if (const auto* uv = std::get_if<dv::UnitValue>(&it->second))
+        return val((double)uv->value);
+    return val::null();
 }
 
 void dv_clear_variables() {
@@ -239,8 +271,8 @@ std::string dv_unit_to_latex(const std::vector<int>& unit_vec) {
     return unit_to_latex(uv);
 }
 
-std::string dv_value_to_scientific(double value) {
-    return value_to_scientific(value);
+std::string dv_value_to_scientific(double value, int sig_figs) {
+    return value_to_scientific((long double)value, sig_figs);
 }
 
 std::string dv_version() {
@@ -270,13 +302,13 @@ EMSCRIPTEN_BINDINGS(UnitEval) {
     value_object<JsResult>("Result")
         .field("value",           &JsResult::value)
         .field("imag",            &JsResult::imag)
-        .field("sig_figs",        &JsResult::sig_figs)
         .field("unit",            &JsResult::unit)
         .field("success",         &JsResult::success)
         .field("error",           &JsResult::error)
         .field("unit_latex",      &JsResult::unit_latex)
         .field("value_scientific",&JsResult::value_scientific)
-        .field("extra_values",    &JsResult::extra_values);
+        .field("extra_values",    &JsResult::extra_values)
+        .field("sig_figs",        &JsResult::sig_figs);
 
     // --- Vectors ---
 

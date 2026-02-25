@@ -41,7 +41,7 @@ else()
     #     -Wall -O3 -Wno-reorder-init-list
     # )
 
-    # list(REMOVE_ITEM SRC_FILES "${SOURCE_DIR}/wasm_api.cpp")
+    list(REMOVE_ITEM SRC_FILES "${SOURCE_DIR}/wasm_api.cpp")
     add_executable(
         Nero
         src/main.cpp

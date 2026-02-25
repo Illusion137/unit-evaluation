@@ -368,7 +368,7 @@ dv::MaybeAST dv::Parser::match_fraction(const dv::Token &token){
 
                 // Build DERIVATIVE ASTCall: args=[body], special_value=var_name identifier
                 Token deriv_token{TokenType::DERIVATIVE, "derivative"};
-                deriv_token.value = EValue{(long double)deriv_order};
+                deriv_token.value = UnitValue{(long double)deriv_order};
                 std::vector<std::unique_ptr<AST>> args;
                 args.emplace_back(std::move(body.value()));
                 Token var_token{TokenType::IDENTIFIER, var_name};
@@ -622,8 +622,7 @@ dv::MaybeAST dv::Parser::match_integral(const dv::Token &token) {
             }
         }
     } else {
-        body = parse_expression(0);
-        if(!body) return body;
+        return std::unexpected{"\\int requires integration variable notation, e.g. \\int_{a}^{b} f(x) \\, dx"};
     }
 
     // Build ASTCall: args = [lower, upper, body], special_value = int_var identifier
@@ -727,7 +726,7 @@ dv::MaybeAST dv::Parser::match_matrix(const dv::Token &token) {
 
     // Store dimensions in token value
     Token mat_token{TokenType::MATRIX_BEGIN, "matrix"};
-    mat_token.value = EValue{(long double)(rows * 1000 + cols)}; // encode rows and cols
+    mat_token.value = UnitValue{(long double)(rows * 1000 + cols)}; // encode rows and cols
     return std::make_unique<AST>(mat_token, std::move(args));
 }
 
@@ -834,7 +833,7 @@ dv::MaybeAST dv::Parser::match_atom(const dv::Token &token){
                     return std::unexpected{std::format("Missing ')' in f'(...)")};
                 }
                 Token prime_token{TokenType::PRIME, std::string(token.text)};
-                prime_token.value = EValue{(long double)prime_count};
+                prime_token.value = UnitValue{(long double)prime_count};
                 return std::make_unique<AST>(prime_token, std::move(args));
             }
         }

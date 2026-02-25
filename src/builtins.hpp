@@ -4,10 +4,11 @@
 
 namespace dv {
     namespace builtins {
-        EValue ln(double value);
-        EValue sin(double value);
-        EValue cos(double value);
-        EValue tan(double value);
+        // Scalar trig/log — UnitValue input for complex support
+        UnitValue ln(UnitValue val);
+        UnitValue sin(UnitValue val);
+        UnitValue cos(UnitValue val);
+        UnitValue tan(UnitValue val);
         EValue sec(double value);
         EValue csc(double value);
         EValue cot(double value);

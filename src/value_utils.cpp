@@ -12,7 +12,9 @@ dv::UnitVector dv::unit_latex_to_unit(const std::string &unit_latex){
     Evaluator eval;
     auto value = eval.evaluate_expression(expr);
     if(!value) return dv::UnitVector{DIMENSIONLESS_VEC};
-    return value.value().unit;
+    if(const auto* uv = std::get_if<dv::UnitValue>(&value.value()))
+        return uv->unit;
+    return dv::UnitVector{DIMENSIONLESS_VEC};
 }
 
 namespace {
@@ -158,23 +160,49 @@ std::string dv::unit_to_latex(const UnitVector& unit) {
     return std::format("\\frac{{{}}}{{{}}}", join_cdot(best.num), join_cdot(best.den));
 }
 
-std::string dv::value_to_scientific(const long double& value) {
-    // 50 -> 50
-    // 500000000 -> 500000000
-    // 5000000000 -> 5\times10^{9}
-    // 5060600000 -> 5.0606\times10^{9}
-    // 0.005 -> 0.005
-    // 0.0005 -> 5\times10^{-4}
+std::string dv::value_to_scientific(const long double& value, int sig_figs) {
+    // sig_figs == 0: unlimited precision (original behavior)
+    // sig_figs >  0: round to that many significant figures
 
     const auto abs_value = std::fabsl(value);
+
+    if (sig_figs > 0 && abs_value > 0.0L) {
+        // Round to sig_figs significant digits using the original exponent
+        const int exp_orig = static_cast<int>(std::floorl(std::log10l(abs_value)));
+        const long double scale = std::powl(10.0L, (long double)(sig_figs - 1 - exp_orig));
+        const long double rounded = std::roundl(value * scale) / scale;
+        const long double rounded_abs = std::fabsl(rounded);
+
+        // Re-compute exponent of the rounded value (rounding can bump the order of magnitude)
+        const int exp_r = (rounded_abs > 0.0L)
+            ? static_cast<int>(std::floorl(std::log10l(rounded_abs)))
+            : exp_orig;
+
+        // Choose display format: scientific for very large/small, decimal otherwise
+        const bool use_sci = (exp_r >= 5) || (exp_r <= -3);
+
+        if (use_sci) {
+            const double coeff = static_cast<double>(rounded / std::powl(10.0L, (long double)exp_r));
+            const int decimals = sig_figs - 1;
+            if (decimals <= 0)
+                return std::format("{:.0f}\\times10^{{{}}}", coeff, exp_r);
+            return std::format("{:.{}f}\\times10^{{{}}}", coeff, decimals, exp_r);
+        } else {
+            // Decimal display: enough decimal places to show all sig figs
+            const int dp = sig_figs - 1 - exp_r;
+            if (dp <= 0)
+                return std::format("{}", static_cast<long long>(std::roundl(rounded)));
+            return std::format("{:.{}f}", static_cast<double>(rounded), dp);
+        }
+    }
+
+    if (value == 0.0L) return "0";
 
     if ((abs_value >= 5e9L) || (abs_value < 5e-4L && abs_value > 0.0L)) {
         const int exponent = static_cast<int>(std::floorl(std::log10l(abs_value)));
         const double coefficient = static_cast<double>(value / std::powl(10.0L, exponent));
         return std::format("{:.10g}\\times10^{{{}}}", coefficient, exponent);
     }
-
-    if (value == 0.0L) return "0";
 
     const double dval = static_cast<double>(value);
     if (dval == std::floor(dval) && abs_value < 1e15L) {

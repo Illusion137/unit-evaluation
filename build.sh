@@ -1,3 +1,4 @@
+export CMAKE_BUILD_PARALLEL_LEVEL=8
 # emcmake cmake -B build-wasm -S .
 emcmake cmake -S . -B build-wasm
 cmake --build build-wasm

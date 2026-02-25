@@ -1,4 +1,4 @@
-import type { MainModule, Result, Formula } from './build-wasm/UnitEval';
+import type { MainModule, Result, Formula } from './build-wasm/Nero';
 
 // ============================================================================
 // Public types (native JS arrays, not Embind vector proxies)
@@ -19,6 +19,7 @@ export interface EvalResult {
 export interface Expression {
     value_expr: string;
     unit_expr: string;
+    conversion_unit_expr?: string;  // optional: converts result to this unit
 }
 
 export interface FormulaResult {
@@ -52,7 +53,7 @@ function embindResultToEvalResult(r: Result): EvalResult {
     const unit = vectorToArray(r.unit);
     const extra_values_raw = vectorToArray(r.extra_values);
     const extra_values = extra_values_raw.length > 0 ? extra_values_raw : undefined;
-    const sig_figs = r.sig_figs === -1 ? undefined : r.sig_figs;
+    const sig_figs = (r.sig_figs as number) > 0 ? (r.sig_figs as number) : undefined;
 
     return {
         success: true,
@@ -146,15 +147,18 @@ export class DimensionalEvaluator {
 
         const value_exprs = new this.module.VectorString();
         const unit_exprs = new this.module.VectorString();
+        const conversion_unit_exprs = new this.module.VectorString();
 
         for (const expr of expressions) {
             value_exprs.push_back(expr.value_expr);
             unit_exprs.push_back(expr.unit_expr);
+            conversion_unit_exprs.push_back(expr.conversion_unit_expr ?? "");
         }
 
-        const raw_results = this.module.dv_eval_batch(value_exprs, unit_exprs);
+        const raw_results = this.module.dv_eval_batch(value_exprs, unit_exprs, conversion_unit_exprs);
         value_exprs.delete();
         unit_exprs.delete();
+        conversion_unit_exprs.delete();
 
         const results: EvalResult[] = [];
         for (let i = 0; i < raw_results.size(); i++) {
@@ -243,8 +247,8 @@ export class DimensionalEvaluator {
         return result;
     }
 
-    value_to_scientific(value: number): string {
-        return this.module.dv_value_to_scientific(value);
+    value_to_scientific(value: number, sig_figs: number = 0): string {
+        return this.module.dv_value_to_scientific(value, sig_figs);
     }
 
     get_version(): string {

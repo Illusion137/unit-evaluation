@@ -102,9 +102,9 @@ namespace dv {
     struct Token {
         TokenType type;
         std::string text;
-        EValue value;
+        UnitValue value;
         Token(): type{TokenType::UNKNOWN}, text{""}, value{0} {}
-        Token(const EValue value, const std::string_view token_text): type{TokenType::NUMERIC_LITERAL}, text{token_text}, value{value} {}
+        Token(const UnitValue value, const std::string_view token_text): type{TokenType::NUMERIC_LITERAL}, text{token_text}, value{value} {}
         Token(const TokenType token_type, const std::string_view token_text): type{token_type}, text{token_text}, value{0} {}
         Token(const TokenType token_type, const double token_value, const std::string_view token_text): type{token_type}, text{token_text}, value{token_value} {}
         operator bool() const noexcept{ return type != TokenType::TEOF; }
